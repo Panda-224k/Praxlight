@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Orbitel Support Console — Ticket #48213</title>
+<style>
+  :root {
+    --bg: #f4f6f8; --panel: #ffffff; --border: #d9e0e5; --ink: #1b2733;
+    --muted: #5c6b78; --accent: #2f6fed; --danger: #d1453b; --warn: #c17d1f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: -apple-system, "Segoe UI", sans-serif; }
+  header { background: #101825; color: #fff; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  header .brand { font-weight: 700; letter-spacing: 0.02em; }
+  header .synthetic-note { font-size: 11px; color: #93a4b8; }
+  main { max-width: 780px; margin: 24px auto; padding: 0 16px 60px; display: flex; flex-direction: column; gap: 16px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .panel h2 { margin: 0 0 12px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .field-row { display: flex; gap: 12px; margin-bottom: 10px; }
+  .field { flex: 1; }
+  .field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .field input, .field textarea {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 13px; color: var(--ink); background: #fbfcfd;
+  }
+  .ticket-meta { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-bottom: 10px; }
+  .complaint { font-size: 13.5px; line-height: 1.6; color: var(--ink); background: #fbfcfd; border: 1px solid var(--border); border-radius: 6px; padding: 12px; }
+  .actions { display: flex; gap: 10px; margin-top: 14px; }
+  button {
+    font-size: 13px; font-weight: 600; padding: 9px 16px; border-radius: 7px; cursor: pointer; border: 1px solid transparent;
+  }
+  #resolveBtn { background: var(--accent); color: #fff; }
+  #escalateBtn { background: #fff; color: var(--danger); border-color: var(--danger); }
+  #replyBtn { background: #fff; color: var(--ink); border-color: var(--border); }
+  .status-line { margin-top: 10px; font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="brand">Orbitel Support Console</span>
+  <span class="synthetic-note">All customer data on this page is synthetic — built for the PraxSight SIH26171 demo, not a real person.</span>
+</header>
+
+<main>
+
+  <section class="panel">
+    <h2>Customer profile</h2>
+    <div class="field-row">
+      <div class="field">
+        <label for="custName">Full name</label>
+        <input id="custName" name="full_name" type="text" value="Aarav Menon" autocomplete="name" />
+      </div>
+      <div class="field">
+        <label for="custEmail">Email</label>
+        <input id="custEmail" name="email" type="email" value="aarav.menon@example-mail.com" autocomplete="email" />
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="custPhone">Phone</label>
+        <input id="custPhone" name="phone" type="tel" value="9845123456" autocomplete="tel" />
+      </div>
+      <div class="field">
+        <label for="custAccount">Account number</label>
+        <input id="custAccount" name="account_number" type="text" value="30281147765" />
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Ticket #48213</h2>
+    <div class="ticket-meta">
+      <span>Opened 2 hours ago</span>
+      <span>Priority: High</span>
+      <span>Category: Billing</span>
+    </div>
+    <p class="complaint">
+      Hi team, I was charged twice for my monthly plan this cycle. My card ending in
+      the number below was billed on the 1st and again on the 3rd:
+      <br /><br />
+      4111 1111 1111 1111
+      <br /><br />
+      Please refund the duplicate charge. You can reach me at
+      aarav.menon@example-mail.com or call +91 98451 23456 if you need anything else.
+      For identity verification my PAN is ABCDE1234F.
+    </p>
+  </section>
+
+  <section class="panel">
+    <h2>Resolve</h2>
+    <div class="field">
+      <label for="agentNote">Internal note (optional)</label>
+      <textarea id="agentNote" rows="3" placeholder="Add a note before resolving..."></textarea>
+    </div>
+    <div class="actions">
+      <button id="resolveBtn" type="button">Resolve Ticket</button>
+      <button id="escalateBtn" type="button">Escalate to Tier 2</button>
+      <button id="replyBtn" type="button">Send Reply</button>
+    </div>
+    <p class="status-line" id="statusLine">No action taken yet.</p>
+  </section>
+
+</main>
+
+<script>
+  // Purely cosmetic feedback so the demo shows a visible state change when
+  // PraxSight's agent (or a human) clicks one of these buttons — none of
+  // this logic is part of the privacy/agent architecture being demonstrated.
+  const statusLine = document.getElementById("statusLine");
+  const wire = (id, label) =>
+    document.getElementById(id).addEventListener("click", () => {
+      statusLine.textContent = `${label} — clicked at ${new Date().toLocaleTimeString()}`;
+    });
+  wire("resolveBtn", "Ticket resolved");
+  wire("escalateBtn", "Escalated to Tier 2");
+  wire("replyBtn", "Reply sent");
+</script>
+
+</body>
+</html>

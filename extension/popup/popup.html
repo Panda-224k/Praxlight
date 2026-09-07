@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PraxSight</title>
+<link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header class="rail">
+    <div class="rail-mark">PS</div>
+    <div class="rail-heading">
+      <h1>PraxSight</h1>
+      <p>privacy firewall for browser agents</p>
+    </div>
+    <div class="rail-status" id="backendStatus" data-state="unknown">
+      <span class="dot"></span><span class="rail-status-label">backend</span>
+    </div>
+  </header>
+
+  <main>
+
+    <section class="panel" id="scanPanel">
+      <div class="panel-row">
+        <h2>1 · Local scan</h2>
+        <button class="btn btn-ghost" id="scanBtn">Scan this page</button>
+      </div>
+      <div class="readout-grid" id="scanCounts">
+        <div class="readout"><span class="readout-label">inputs</span><span class="readout-value" id="cInputs">–</span></div>
+        <div class="readout"><span class="readout-label">controls</span><span class="readout-value" id="cInteractive">–</span></div>
+        <div class="readout"><span class="readout-label">text nodes</span><span class="readout-value" id="cText">–</span></div>
+      </div>
+    </section>
+
+    <section class="panel" id="firewallPanel">
+      <div class="panel-row">
+        <h2>Privacy firewall</h2>
+        <span class="badge" id="gateBadge" data-state="idle">GATE IDLE</span>
+      </div>
+      <div class="readout-grid firewall-grid">
+        <div class="readout"><span class="readout-label">entities detected</span><span class="readout-value" id="mDetected">0</span></div>
+        <div class="readout"><span class="readout-label">entities redacted</span><span class="readout-value" id="mRedacted">0</span></div>
+        <div class="readout accent-safe"><span class="readout-label">raw PII sent</span><span class="readout-value" id="mRawSent">0</span></div>
+      </div>
+
+      <div class="split">
+        <div class="split-col">
+          <h3>what's on the page</h3>
+          <pre class="code-block danger" id="rawPreview">Run a scan to see this.</pre>
+        </div>
+        <div class="split-col">
+          <h3>what would leave the browser</h3>
+          <pre class="code-block safe" id="sanitizedPreview">Run a scan to see this.</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="agentPanel">
+      <div class="panel-row">
+        <h2>2 · Task</h2>
+      </div>
+      <textarea id="taskInput" rows="2" placeholder="e.g. Resolve this support ticket">Resolve this support ticket</textarea>
+      <button class="btn btn-primary" id="runAgentBtn">Send sanitized context → run agent</button>
+
+      <ol class="trace" id="traceList"></ol>
+
+      <div class="approval" id="approvalBox" hidden>
+        <div class="approval-head">Approval required</div>
+        <p class="approval-reason" id="approvalReason"></p>
+        <div class="approval-meta">
+          <span id="approvalAction"></span> · risk <span id="approvalRisk"></span>
+        </div>
+        <div class="approval-actions">
+          <button class="btn btn-approve" id="approveBtn">Approve &amp; execute</button>
+          <button class="btn btn-reject" id="rejectBtn">Reject</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="networkPanel">
+      <div class="panel-row">
+        <h2>Network guard</h2>
+        <button class="btn btn-ghost btn-small" id="clearLogBtn">Clear</button>
+      </div>
+      <div class="log" id="logList"><p class="empty">No requests yet.</p></div>
+    </section>
+
+  </main>
+
+  <script src="popup.js"></script>
+</body>
+</html>

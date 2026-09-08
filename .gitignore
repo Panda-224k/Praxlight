@@ -3,9 +3,6 @@ __pycache__/
 *.pyc
 .venv/
 venv/
-.env
-.env.*
-!.env.example
 
 # Node (none needed to run this repo, but just in case someone adds tooling)
 node_modules/
@@ -16,3 +13,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local environment
+.env

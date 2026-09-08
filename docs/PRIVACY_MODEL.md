@@ -71,3 +71,20 @@ through*.
 ## Privacy manifest shape
 
 Attached to every request the gate allows through:
+
+```json
+{
+  "performed": true,
+  "version": "0.1.0",
+  "detectors": ["dom-structural", "rules-text"],
+  "entities_detected": 7,
+  "entities_redacted": 7,
+  "by_type": { "email": 2, "card_number": 1, "phone": 1 },
+  "generated_at": "2026-09-04T10:15:00.000Z"
+}
+```
+
+The server logs this on every accepted request (`main.py`'s `agent_act`) so
+`entities_detected`/`entities_redacted` in server logs and the extension's
+own Network Guard log should always agree for a healthy run — a useful
+sanity check during a demo rehearsal.

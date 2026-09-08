@@ -11,6 +11,13 @@ import logging
 import sys
 from pathlib import Path
 
+# Load .env so OPENROUTER_API_KEY etc. are available when agent.py initialises
+# ModelRouter. This is safe to call even when the file is absent.
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).parent.parent
+load_dotenv(BASE_DIR / ".env")
+
 sys.path.insert(0, str(Path(__file__).parent))
 
 from fastapi import FastAPI, HTTPException
@@ -24,7 +31,6 @@ from agent import router as model_router
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("praxsight")
 
-BASE_DIR = Path(__file__).parent.parent
 DEMO_DIR = BASE_DIR / "demo"
 
 app = FastAPI(title="PraxSight Agent API", version="0.1.0", docs_url="/api/docs", redoc_url=None)

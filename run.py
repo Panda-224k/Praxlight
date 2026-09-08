@@ -9,10 +9,15 @@ import sys
 import webbrowser
 from pathlib import Path
 
+# Load .env before anything else so OPENROUTER_API_KEY, GOOGLE_AI_API_KEY,
+# ANTHROPIC_API_KEY etc. are visible to agent.py when uvicorn imports it.
+from dotenv import load_dotenv
+
 BASE_DIR = Path(__file__).parent
+load_dotenv(BASE_DIR / ".env")
 sys.path.insert(0, str(BASE_DIR / "server"))
 
-PORT = 8000
+PORT = int(__import__("os").environ.get("PORT", 8000))
 BACKEND_URL = f"http://localhost:{PORT}"
 DEMO_URL = f"{BACKEND_URL}/demo/support-ticket/"
 
@@ -20,7 +25,7 @@ DEMO_URL = f"{BACKEND_URL}/demo/support-ticket/"
 def print_banner():
     print()
     print("  +----------------------------------------------------+")
-    print("  |   PraxSight  ·  SIH26171  ·  v0.1.0                 |")
+    print("  |   PraxSight  ·  SIH26171  ·  v0.1.0               |")
     print("  +----------------------------------------------------+")
     print(f"  |  Backend API   -> {BACKEND_URL:<32} |")
     print(f"  |  API docs      -> {BACKEND_URL + '/api/docs':<32} |")

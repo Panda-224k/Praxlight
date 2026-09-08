@@ -1,0 +1,8 @@
+{
+  "name": "praxsight-tests",
+  "private": true,
+  "description": "Dev-only Node dependencies for running this repo's test suite. Not required to run the extension or the backend — those have no build step and no npm dependency at all.",
+  "devDependencies": {
+    "jsdom": "^30.0.1"
+  }
+}

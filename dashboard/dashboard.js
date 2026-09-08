@@ -32,7 +32,11 @@ async function loadLatestSession() {
     const session = await response.json();
     if (session.action) {
       renderAction(session.action);
-      $("actionBadge").insertAdjacentText("afterend", " ");
+      $("heroTitle").textContent = "Latest agent result received";
+      $("heroDescription").textContent = "The structured action passed through the privacy gate and server validation.";
+      $("postureDetail").textContent = "Sanitized context was used; raw page values remain browser-only.";
+      setPipeline("see", "complete"); setPipeline("detect", "complete"); setPipeline("sanitize", "complete"); setPipeline("reason", "complete"); setPipeline("act", session.action.validated ? "complete" : "blocked");
+      setDot("agentDot", session.action.requires_approval ? "warn" : "ok");
       showNotice("Showing the latest structured result from the extension session.");
     }
     if (session.scan) {
@@ -41,6 +45,11 @@ async function loadLatestSession() {
       $("scanBadge").textContent = session.scan.sanitized ? "SANITIZED" : "BLOCKED";
       $("scanBadge").className = `badge ${session.scan.sanitized ? "ready" : "blocked"}`;
       $("postureValue").textContent = session.scan.sanitized ? "PROTECTED" : "BLOCKED";
+      $("rawPreview").textContent = "Raw page values remain inside the browser and are not exported to the dashboard.";
+      if (session.scan.sanitizedPayload) $("sanitizedPreview").textContent = safePreview(session.scan.sanitizedPayload);
+    }
+    if (session.network) {
+      $("networkLog").innerHTML = `<div class="network-entry"><span>${session.updated_at ? new Date(session.updated_at).toLocaleTimeString() : "Latest request"} · <b class="allowed">${session.network.status || "ALLOWED"}</b></span><span class="detail">Latest agent request completed through the backend privacy gate.</span></div>`;
     }
   } catch { /* The bridge remains the primary live data path. */ }
 }

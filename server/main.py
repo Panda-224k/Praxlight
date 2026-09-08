@@ -71,7 +71,13 @@ async def latest_session_state():
 
 @app.post("/api/session/latest")
 async def update_session_state(event: dict):
-    latest_session.update({key: event[key] for key in ("scan", "action", "network") if key in event})
+    for key in ("scan", "action", "network"):
+        if key not in event:
+            continue
+        if isinstance(event[key], dict) and isinstance(latest_session.get(key), dict):
+            latest_session[key] = {**latest_session[key], **event[key]}
+        else:
+            latest_session[key] = event[key]
     latest_session["updated_at"] = datetime.now(timezone.utc).isoformat()
     return {"ok": True, "updated_at": latest_session["updated_at"]}
 
@@ -109,6 +115,13 @@ async def agent_act(req: AgentActRequest):
             "entitiesDetected": req.privacy_manifest.entities_detected,
             "entitiesRedacted": req.privacy_manifest.entities_redacted,
             "sanitized": True,
+            # This is the already-redacted request body; raw page values never
+            # enter the dashboard session feed.
+            "sanitizedPayload": {
+                "elements": req.elements.model_dump(),
+                "text_context": [node.model_dump() for node in req.text_context[:40]],
+                "privacy_manifest": req.privacy_manifest.model_dump(),
+            },
         },
         "action": action.model_dump(),
         "network": {"status": "ALLOWED"},

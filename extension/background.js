@@ -101,6 +101,19 @@ async function sendSanitizedContext(payload) {
   }
 }
 
+async function scanActivePageForDashboard(senderTabId) {
+  const tabs = await chrome.tabs.query({ currentWindow: true });
+  const target = tabs.find((tab) => tab.active && tab.id !== senderTabId && tab.url && !tab.url.startsWith(`${BACKEND_URL}/dashboard`))
+    || tabs.find((tab) => tab.id !== senderTabId && tab.url && !tab.url.startsWith(`${BACKEND_URL}/dashboard`));
+  if (!target || !target.id) return { ok: false, error: "open_the_demo_page_in_another_tab" };
+  try {
+    const result = await chrome.tabs.sendMessage(target.id, { type: "PRAXSIGHT_SCAN" });
+    return result && result.ok ? result : { ok: false, error: "active_page_scan_failed" };
+  } catch (e) {
+    return { ok: false, error: "content_script_missing_on_active_page" };
+  }
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg.type === "PRAXSIGHT_SEND_TO_SERVER") {
     sendSanitizedContext(msg.payload).then(sendResponse);
@@ -112,6 +125,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg.type === "PRAXSIGHT_CLEAR_LOG") {
     chrome.storage.local.set({ [REQUEST_LOG_KEY]: [] }).then(() => sendResponse({ ok: true }));
+    return true;
+  }
+  if (msg.type === "PRAXSIGHT_DASHBOARD_SCAN_ACTIVE") {
+    scanActivePageForDashboard(_sender.tab && _sender.tab.id).then(sendResponse);
     return true;
   }
 });

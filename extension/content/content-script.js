@@ -101,7 +101,14 @@
     if (event.source !== window || event.origin !== window.location.origin || !event.data || event.data.source !== "praxsight-dashboard") return;
     if (event.data.type === "PRAXSIGHT_DASHBOARD_SCAN") {
       try {
-        const result = await runScan();
+        const result = await new Promise((resolve) => chrome.runtime.sendMessage({ type: "PRAXSIGHT_DASHBOARD_SCAN_ACTIVE" }, resolve));
+        if (!result || !result.ok) throw new Error(result && result.error ? result.error : "active_page_scan_failed");
+        lastScan = {
+          perception: result.raw,
+          manifest: result.manifest,
+          residual: result.residual,
+          sanitized: result.sanitized,
+        };
         window.postMessage({ type: "PRAXSIGHT_DASHBOARD_SCAN_RESULT", ok: true, scan: {
           manifest: result.manifest,
           residual: result.residual,
@@ -115,8 +122,14 @@
     }
     if (event.data.type === "PRAXSIGHT_DASHBOARD_AGENT") {
       try {
-        const scan = lastScan || await runScan();
-        const payload = { task: event.data.task || "Resolve this support ticket", manifest: scan.manifest, residual: scan.residual, sanitized: scan.sanitized };
+        const scan = lastScan || await new Promise((resolve) => chrome.runtime.sendMessage({ type: "PRAXSIGHT_DASHBOARD_SCAN_ACTIVE" }, resolve));
+        if (!scan || !scan.ok && !scan.manifest) throw new Error(scan && scan.error ? scan.error : "scan_required_before_agent");
+        const normalizedScan = scan.manifest ? scan : {
+          manifest: scan.manifest,
+          residual: scan.residual,
+          sanitized: scan.sanitized,
+        };
+        const payload = { task: event.data.task || "Resolve this support ticket", manifest: normalizedScan.manifest, residual: normalizedScan.residual, sanitized: normalizedScan.sanitized };
         const result = await new Promise((resolve) => chrome.runtime.sendMessage({ type: "PRAXSIGHT_SEND_TO_SERVER", payload }, resolve));
         window.postMessage({ type: "PRAXSIGHT_DASHBOARD_AGENT_RESULT", ...result }, window.location.origin);
       } catch (error) {

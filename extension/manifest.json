@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "description": "SIH26171: on-device DOM/text perception with a hard privacy gate — no raw PII leaves the browser before an AI agent reasons over the page.",
 
-  "permissions": ["activeTab", "scripting", "storage"],
+  "permissions": ["activeTab", "scripting", "storage", "tabs"],
   "host_permissions": [
     "http://localhost:8000/*",
     "http://127.0.0.1:8000/*"

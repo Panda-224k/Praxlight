@@ -20,6 +20,7 @@ sys.path.insert(0, str(BASE_DIR / "server"))
 PORT = int(__import__("os").environ.get("PORT", 8000))
 BACKEND_URL = f"http://localhost:{PORT}"
 DEMO_URL = f"{BACKEND_URL}/demo/support-ticket/"
+DASHBOARD_URL = f"{BACKEND_URL}/dashboard/"
 
 
 def print_banner():
@@ -30,6 +31,7 @@ def print_banner():
     print(f"  |  Backend API   -> {BACKEND_URL:<32} |")
     print(f"  |  API docs      -> {BACKEND_URL + '/api/docs':<32} |")
     print(f"  |  Demo page     -> {DEMO_URL:<32} |")
+    print(f"  |  Dashboard     -> {DASHBOARD_URL:<32} |")
     print("  +----------------------------------------------------+")
     print()
     print("  Next: chrome://extensions -> Developer mode -> Load unpacked")
@@ -41,7 +43,7 @@ def print_banner():
 if __name__ == "__main__":
     print_banner()
     try:
-        webbrowser.open(DEMO_URL)
+        webbrowser.open(DASHBOARD_URL)
     except Exception:
         pass
 

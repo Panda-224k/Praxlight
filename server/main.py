@@ -32,6 +32,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 log = logging.getLogger("praxsight")
 
 DEMO_DIR = BASE_DIR / "demo"
+DASHBOARD_DIR = BASE_DIR / "dashboard"
 
 app = FastAPI(title="PraxSight Agent API", version="0.1.0", docs_url="/api/docs", redoc_url=None)
 
@@ -47,6 +48,13 @@ app.add_middleware(
 
 if DEMO_DIR.exists():
     app.mount("/demo", StaticFiles(directory=str(DEMO_DIR), html=True), name="demo")
+if DASHBOARD_DIR.exists():
+    app.mount("/dashboard", StaticFiles(directory=str(DASHBOARD_DIR), html=True), name="dashboard")
+
+
+@app.get("/")
+async def dashboard_index():
+    return {"service": "praxsight-agent-api", "dashboard": "/dashboard/", "demo": "/demo/support-ticket/"}
 
 
 @app.get("/api/health")

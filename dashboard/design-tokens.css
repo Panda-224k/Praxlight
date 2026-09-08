@@ -1,0 +1,22 @@
+:root {
+	--ps-bg: #0f1a1c;
+	--ps-surface: #15252a;
+	--ps-surface-2: #1c3238;
+	--ps-border: #2a4247;
+	--ps-text: #e8f2f1;
+	--ps-text-muted: #8fa8ab;
+	--ps-text-faint: #5f7679;
+	--ps-safe: #3ddc97;
+	--ps-safe-dim: #1f4536;
+	--ps-warn: #e8a33d;
+	--ps-warn-dim: #4a3a1c;
+	--ps-danger: #e8685d;
+	--ps-danger-dim: #4a2420;
+	--ps-brand: #8b96ff;
+	--ps-brand-dim: #262a4a;
+	--ps-font-ui: "Segoe UI", Inter, system-ui, sans-serif;
+	--ps-font-data: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+	--ps-motion-fast: 120ms;
+	--ps-motion-base: 200ms;
+	--ps-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}

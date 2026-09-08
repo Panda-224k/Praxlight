@@ -94,4 +94,38 @@
       return true;
     }
   });
+
+  // The dashboard is served by the local backend, so it can use this bridge
+  // without receiving direct access to the page DOM or the backend fetch gate.
+  window.addEventListener("message", async (event) => {
+    if (event.source !== window || event.origin !== window.location.origin || !event.data || event.data.source !== "praxsight-dashboard") return;
+    if (event.data.type === "PRAXSIGHT_DASHBOARD_SCAN") {
+      try {
+        const result = await runScan();
+        window.postMessage({ type: "PRAXSIGHT_DASHBOARD_SCAN_RESULT", ok: true, scan: {
+          manifest: result.manifest,
+          residual: result.residual,
+          counts: { inputs: result.perception.inputs.length, interactive: result.perception.interactive.length, textNodes: result.perception.textNodes.length },
+          raw: result.perception,
+          sanitized: result.sanitized,
+        } }, window.location.origin);
+      } catch (error) {
+        window.postMessage({ type: "PRAXSIGHT_DASHBOARD_SCAN_RESULT", ok: false, error: String(error && error.message ? error.message : error) }, window.location.origin);
+      }
+    }
+    if (event.data.type === "PRAXSIGHT_DASHBOARD_AGENT") {
+      try {
+        const scan = lastScan || await runScan();
+        const payload = { task: event.data.task || "Resolve this support ticket", manifest: scan.manifest, residual: scan.residual, sanitized: scan.sanitized };
+        const result = await new Promise((resolve) => chrome.runtime.sendMessage({ type: "PRAXSIGHT_SEND_TO_SERVER", payload }, resolve));
+        window.postMessage({ type: "PRAXSIGHT_DASHBOARD_AGENT_RESULT", ...result }, window.location.origin);
+      } catch (error) {
+        window.postMessage({ type: "PRAXSIGHT_DASHBOARD_AGENT_RESULT", ok: false, error: String(error && error.message ? error.message : error) }, window.location.origin);
+      }
+    }
+    if (event.data.type === "PRAXSIGHT_DASHBOARD_LOG") {
+      const log = await new Promise((resolve) => chrome.runtime.sendMessage({ type: "PRAXSIGHT_GET_LOG" }, resolve));
+      window.postMessage({ type: "PRAXSIGHT_DASHBOARD_LOG_RESULT", log: log || [] }, window.location.origin);
+    }
+  });
 })();

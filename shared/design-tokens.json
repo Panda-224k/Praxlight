@@ -1,0 +1,19 @@
+{
+  "color": {"bg":"#0f1a1c","surface":"#15252a","surface2":"#1c3238","border":"#2a4247","text":"#e8f2f1","textMuted":"#8fa8ab","textFaint":"#5f7679","safe":"#3ddc97","safeDim":"#1f4536","warn":"#e8a33d","warnDim":"#4a3a1c","danger":"#e8685d","dangerDim":"#4a2420","brand":"#8b96ff","brandDim":"#262a4a"},
+  "pipelineState": {"complete":"safe","active":"brand","waiting":"textFaint","blocked":"danger"},
+  "risk": {"low":"safe","medium":"warn","high":"danger"},
+  "statusVocabulary": {
+    "LOCAL":"Data has not left the browser process.",
+    "PROTECTED":"Sensitive entities were redacted before transmission.",
+    "SANITIZED":"The residual PII scan passed.",
+    "ALLOWED":"The backend request returned successfully.",
+    "BLOCKED":"The privacy gate or server rejected the request.",
+    "REASONING":"The backend is processing the request.",
+    "ACTION":"A validated action is waiting for human approval.",
+    "VERIFIED":"Not implemented yet; use executed instead."
+  },
+  "typography": {"fontUi":"Segoe UI, Inter, system-ui, sans-serif","fontData":"IBM Plex Mono, ui-monospace, SFMono-Regular, Menlo, monospace"},
+  "spacing": {"1":4,"2":8,"3":12,"4":16,"5":20,"6":24,"8":32},
+  "radius": {"sm":6,"md":7,"lg":8,"pill":100},
+  "motion": {"fast":"120ms","base":"200ms","slow":"320ms","ease":"cubic-bezier(0.4, 0, 0.2, 1)"}
+}

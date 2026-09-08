@@ -19,10 +19,30 @@ async function checkBackend() {
     state.backend = response.ok;
     setDot("networkDot", response.ok ? "ok" : "down");
     $("backendVersion").textContent = `backend: ${data.service || "available"} / ${data.version || "unknown"}`;
+    await loadLatestSession();
   } catch {
     setDot("networkDot", "down");
     $("backendVersion").textContent = "backend status: unavailable";
   }
+}
+
+async function loadLatestSession() {
+  try {
+    const response = await fetch("/api/session/latest");
+    const session = await response.json();
+    if (session.action) {
+      renderAction(session.action);
+      $("actionBadge").insertAdjacentText("afterend", " ");
+      showNotice("Showing the latest structured result from the extension session.");
+    }
+    if (session.scan) {
+      $("detectedMetric").textContent = session.scan.entitiesDetected ?? "—";
+      $("redactedMetric").textContent = session.scan.entitiesRedacted ?? "—";
+      $("scanBadge").textContent = session.scan.sanitized ? "SANITIZED" : "BLOCKED";
+      $("scanBadge").className = `badge ${session.scan.sanitized ? "ready" : "blocked"}`;
+      $("postureValue").textContent = session.scan.sanitized ? "PROTECTED" : "BLOCKED";
+    }
+  } catch { /* The bridge remains the primary live data path. */ }
 }
 
 function receiveBridge(type, timeout = 5000) {

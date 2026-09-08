@@ -9,6 +9,7 @@ by design — see docs/PRIVACY_MODEL.md for the full data-flow diagram.
 """
 import logging
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Load .env so OPENROUTER_API_KEY etc. are available when agent.py initialises
@@ -33,6 +34,7 @@ log = logging.getLogger("praxsight")
 
 DEMO_DIR = BASE_DIR / "demo"
 DASHBOARD_DIR = BASE_DIR / "dashboard"
+latest_session = {"updated_at": None, "scan": None, "action": None, "network": None}
 
 app = FastAPI(title="PraxSight Agent API", version="0.1.0", docs_url="/api/docs", redoc_url=None)
 
@@ -62,6 +64,18 @@ async def health():
     return {"status": "ok", "service": "praxsight-agent-api", "version": "0.1.0"}
 
 
+@app.get("/api/session/latest")
+async def latest_session_state():
+    return latest_session
+
+
+@app.post("/api/session/latest")
+async def update_session_state(event: dict):
+    latest_session.update({key: event[key] for key in ("scan", "action", "network") if key in event})
+    latest_session["updated_at"] = datetime.now(timezone.utc).isoformat()
+    return {"ok": True, "updated_at": latest_session["updated_at"]}
+
+
 @app.post("/api/agent/act", response_model=AgentAction)
 async def agent_act(req: AgentActRequest):
     # ── Server-side privacy gate: defense-in-depth pass #3 ──────────────────
@@ -88,6 +102,17 @@ async def agent_act(req: AgentActRequest):
     except ValidationError as e:
         log.warning("agent_act validation rejected action: %s", e)
         raise HTTPException(422, str(e))
+
+    latest_session.update({
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "scan": {
+            "entitiesDetected": req.privacy_manifest.entities_detected,
+            "entitiesRedacted": req.privacy_manifest.entities_redacted,
+            "sanitized": True,
+        },
+        "action": action.model_dump(),
+        "network": {"status": "ALLOWED"},
+    })
 
     return action
 

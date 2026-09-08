@@ -28,6 +28,18 @@
 const BACKEND_URL = "http://localhost:8000";
 const REQUEST_LOG_KEY = "praxsight_request_log";
 
+async function publishSession(event) {
+  try {
+    await fetch(`${BACKEND_URL}/api/session/latest`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(event),
+    });
+  } catch {
+    // The dashboard can still use the extension bridge when the session feed is unavailable.
+  }
+}
+
 async function appendLog(entry) {
   const { [REQUEST_LOG_KEY]: log = [] } = await chrome.storage.local.get(REQUEST_LOG_KEY);
   log.unshift(entry);
@@ -88,6 +100,16 @@ async function sendSanitizedContext(payload) {
       entitiesDetected: manifest.entities_detected,
       entitiesRedacted: manifest.entities_redacted,
       httpStatus: resp.status,
+    });
+
+    await publishSession({
+      scan: {
+        entitiesDetected: manifest.entities_detected,
+        entitiesRedacted: manifest.entities_redacted,
+        sanitized: Boolean(residual.clean),
+      },
+      action: resp.ok ? data : null,
+      network: { status: resp.ok ? "ALLOWED" : "ERROR", latencyMs, httpStatus: resp.status },
     });
 
     return { ok: resp.ok, data };

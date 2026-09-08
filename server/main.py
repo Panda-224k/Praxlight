@@ -8,6 +8,7 @@ extension's privacy gate (extension/background.js). It never sees raw PII
 by design — see docs/PRIVACY_MODEL.md for the full data-flow diagram.
 """
 import logging
+import json
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,7 +35,17 @@ log = logging.getLogger("praxsight")
 
 DEMO_DIR = BASE_DIR / "demo"
 DASHBOARD_DIR = BASE_DIR / "dashboard"
+SESSION_FILE = BASE_DIR / ".praxsight-session.json"
 latest_session = {"updated_at": None, "scan": None, "action": None, "network": None}
+if SESSION_FILE.exists():
+    try:
+        latest_session.update(json.loads(SESSION_FILE.read_text(encoding="utf-8")))
+    except (OSError, json.JSONDecodeError):
+        pass
+
+
+def persist_session():
+    SESSION_FILE.write_text(json.dumps(latest_session), encoding="utf-8")
 
 app = FastAPI(title="PraxSight Agent API", version="0.1.0", docs_url="/api/docs", redoc_url=None)
 
@@ -79,6 +90,7 @@ async def update_session_state(event: dict):
         else:
             latest_session[key] = event[key]
     latest_session["updated_at"] = datetime.now(timezone.utc).isoformat()
+    persist_session()
     return {"ok": True, "updated_at": latest_session["updated_at"]}
 
 
@@ -126,6 +138,7 @@ async def agent_act(req: AgentActRequest):
         "action": action.model_dump(),
         "network": {"status": "ALLOWED"},
     })
+    persist_session()
 
     return action
 

@@ -1,74 +1,246 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0f1a1c">
-  <title>PraxSight / Instrument Console</title>
-  <link rel="stylesheet" href="/dashboard/design-tokens.css">
+  <meta name="theme-color" content="#080e14">
+  <title>PraxSight — Privacy Instrument Console</title>
+  <meta name="description" content="SIH26171: On-device Visual Perception for Light-weight Browser Agents — live privacy gate instrument console.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="/dashboard/dashboard.css">
 </head>
 <body>
-  <div class="app-shell">
-    <header class="topbar">
-      <div class="brand-lockup"><span class="brand-mark">PS</span><div><strong>PraxSight</strong><span>privacy instrument console</span></div></div>
-      <div class="status-strip" aria-label="System status">
-        <span class="status-item"><i id="localDot"></i>LOCAL PERCEPTION</span>
-        <span class="status-item"><i id="gateDot"></i>PRIVACY GATE</span>
-        <span class="status-item"><i id="agentDot"></i>AGENT</span>
-        <span class="status-item"><i id="networkDot"></i>NETWORK</span>
+<div class="app-shell">
+
+  <!-- Topbar -->
+  <header class="topbar">
+    <div class="brand-lockup">
+      <div class="brand-mark">PS</div>
+      <div>
+        <strong>PraxSight</strong>
+        <span>Privacy Instrument Console</span>
       </div>
-      <a class="text-link" href="/demo/support-ticket/" target="_blank" rel="noreferrer">Open demo ↗</a>
-    </header>
+    </div>
 
-    <main>
-      <section class="hero-grid">
-        <div class="hero-copy">
-          <p class="eyebrow">LIVE CONTROL SURFACE / <span id="lastUpdated">waiting</span></p>
-          <h1 id="heroTitle">Awaiting a browser scan</h1>
-          <p id="heroDescription">Load the PraxSight extension, open the demo page, then run a scan from this console.</p>
-          <div class="hero-actions"><button class="button button-primary" id="scanButton">Run local scan</button><button class="button button-quiet" id="agentButton" disabled>Run agent</button></div>
-          <p class="notice" id="connectionNotice">The dashboard is connected to the backend. The browser extension bridge is not connected yet.</p>
+    <div class="status-strip" aria-label="System status">
+      <span class="status-item"><i id="localDot"></i>LOCAL PERCEPTION</span>
+      <span class="status-item"><i id="gateDot"></i>PRIVACY GATE</span>
+      <span class="status-item"><i id="agentDot"></i>AGENT</span>
+      <span class="status-item"><i id="networkDot"></i>NETWORK</span>
+    </div>
+
+    <div class="topbar-actions">
+      <a class="text-link" href="/demo/support-ticket/" target="_blank" rel="noreferrer">Demo page ↗</a>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- Demo Mode Banner -->
+    <div class="demo-banner">
+      <div class="demo-banner-icon">⚡</div>
+      <div class="demo-banner-text">
+        <strong>SIH DEMO MODE — SIH26171</strong>
+        <span>Open the demo page, load the extension, then use the buttons below. All PII stays local.</span>
+      </div>
+      <div class="demo-banner-actions">
+        <span id="modelBadge" class="model-badge local">DETERMINISTIC</span>
+        <button class="button button-danger button-small" id="resetBtn">Reset Demo</button>
+        <a class="button button-quiet button-small" href="/api/docs" target="_blank">API Docs</a>
+      </div>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="panel hero-section">
+      <div class="hero-copy">
+        <p class="eyebrow">LIVE CONTROL SURFACE / <span id="lastUpdated">waiting for first scan</span></p>
+        <h1 class="hero-title" id="heroTitle">Awaiting browser scan</h1>
+        <p class="hero-description" id="heroDescription">
+          Load the PraxSight extension in Chrome, open the demo page, then run a scan from here.
+          All detection and redaction happens locally — no raw PII leaves the browser.
+        </p>
+        <div class="hero-actions">
+          <button class="button button-primary" id="scanButton">▶ Run local scan</button>
+          <button class="button button-quiet" id="agentButton" disabled>⚡ Run agent</button>
         </div>
-        <div class="hero-readout"><span class="readout-label">privacy posture</span><strong id="postureValue">LOCAL</strong><span id="postureDetail">No page data has left the browser.</span></div>
-      </section>
+        <p class="notice" id="connectionNotice">
+          Backend connected. Extension bridge not yet active — open the demo page in another tab with the extension loaded.
+        </p>
+      </div>
+      <div class="hero-readout">
+        <span class="readout-label" style="font-size:11px;color:var(--ink-muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600;">Privacy Posture</span>
+        <span class="posture-value idle" id="postureValue">LOCAL</span>
+        <span class="posture-detail" id="postureDetail">No page data has left the browser.</span>
+      </div>
+    </section>
 
-      <section class="pipeline-panel panel">
-        <div class="section-heading"><div><p class="eyebrow">PIPELINE</p><h2>From page to permitted action</h2></div><span class="section-note">real states only</span></div>
-        <div class="pipeline" id="pipeline">
-          <div class="pipeline-step active" data-step="see"><span>01</span><b>SEE</b><small>local DOM</small></div><div class="pipeline-line"></div>
-          <div class="pipeline-step" data-step="detect"><span>02</span><b>DETECT</b><small>entities</small></div><div class="pipeline-line"></div>
-          <div class="pipeline-step blocked" data-step="minimize"><span>03</span><b>MINIMIZE</b><small>not measured</small></div><div class="pipeline-line"></div>
-          <div class="pipeline-step" data-step="sanitize"><span>04</span><b>SANITIZE</b><small>redaction</small></div><div class="pipeline-line"></div>
-          <div class="pipeline-step" data-step="reason"><span>05</span><b>REASON</b><small>agent API</small></div><div class="pipeline-line"></div>
-          <div class="pipeline-step" data-step="act"><span>06</span><b>ACT</b><small>validated</small></div><div class="pipeline-line"></div>
-          <div class="pipeline-step blocked" data-step="verify"><span>07</span><b>VERIFY</b><small>not implemented</small></div>
+    <!-- Pipeline -->
+    <section class="panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">PIPELINE</p>
+          <h2>From page to permitted action</h2>
         </div>
-      </section>
-
-      <section class="content-grid">
-        <div class="panel">
-          <div class="section-heading"><div><p class="eyebrow">LIVE PERCEPTION</p><h2>What the browser can see</h2></div><span class="badge" id="scanBadge">IDLE</span></div>
-          <div class="metric-grid"><div class="metric"><span>inputs</span><strong id="inputsMetric">—</strong></div><div class="metric"><span>interactive</span><strong id="interactiveMetric">—</strong></div><div class="metric"><span>text nodes</span><strong id="textMetric">—</strong></div></div>
-          <div class="data-row"><span>sensitive entities</span><strong id="detectedMetric">—</strong></div><div class="data-row"><span>entities redacted</span><strong class="safe-text" id="redactedMetric">—</strong></div><div class="data-row"><span>raw PII sent</span><strong class="safe-text">0</strong></div>
+        <span class="section-note">Real states only — no fabricated steps</span>
+      </div>
+      <div class="pipeline" id="pipeline">
+        <div class="pipeline-step active" data-step="see">
+          <span>01</span><b>SEE</b><small>local DOM</small>
         </div>
-        <div class="panel action-panel">
-          <div class="section-heading"><div><p class="eyebrow">AGENT ACTION</p><h2>Structured decision</h2></div><span class="badge" id="actionBadge">WAITING</span></div>
-          <label class="field-label" for="taskInput">TASK</label><textarea id="taskInput" rows="3">Resolve this support ticket</textarea>
-          <div id="actionEmpty" class="empty-state">Run a scan, then send the sanitized page context to the agent.</div>
-          <div id="actionDetails" hidden><div class="action-name" id="actionName">—</div><div class="data-row"><span>target</span><strong id="actionTarget">—</strong></div><div class="data-row"><span>risk</span><strong id="actionRisk">—</strong></div><p class="reason" id="actionReason">—</p></div>
+        <div class="pipeline-line"></div>
+        <div class="pipeline-step" data-step="detect">
+          <span>02</span><b>DETECT</b><small>PII entities</small>
         </div>
-      </section>
+        <div class="pipeline-line"></div>
+        <div class="pipeline-step" data-step="sanitize">
+          <span>03</span><b>REDACT</b><small>semantic tokens</small>
+        </div>
+        <div class="pipeline-line"></div>
+        <div class="pipeline-step" data-step="reason">
+          <span>04</span><b>REASON</b><small>LLM / offline</small>
+        </div>
+        <div class="pipeline-line"></div>
+        <div class="pipeline-step" data-step="validate">
+          <span>05</span><b>VALIDATE</b><small>psId-scoped</small>
+        </div>
+        <div class="pipeline-line"></div>
+        <div class="pipeline-step" data-step="act">
+          <span>06</span><b>ACT</b><small>human-approved</small>
+        </div>
+        <div class="pipeline-line"></div>
+        <div class="pipeline-step not-built" data-step="verify">
+          <span>07</span><b>VERIFY</b><small>roadmap</small>
+        </div>
+      </div>
+    </section>
 
-      <section class="content-grid lower-grid">
-        <div class="panel"><div class="section-heading"><div><p class="eyebrow">PRIVACY FIREWALL</p><h2>Transmission boundary</h2></div><span class="badge safe-badge">FAIL CLOSED</span></div><div class="firewall-columns"><div><span class="column-label">RAW PAGE DATA</span><pre id="rawPreview">No scan captured.</pre></div><div><span class="column-label safe-text">SANITIZED PAYLOAD</span><pre id="sanitizedPreview">No sanitized payload yet.</pre></div></div></div>
-        <div class="panel"><div class="section-heading"><div><p class="eyebrow">NETWORK GUARD</p><h2>Requests</h2></div><button class="button button-quiet button-small" id="refreshLog">Refresh</button></div><div id="networkLog" class="network-log"><div class="empty-state">No request log available until the extension bridge connects.</div></div></div>
-      </section>
+    <!-- Perception + Agent Action grid -->
+    <div class="content-grid">
 
-      <section class="panel honest-limitations"><div class="section-heading"><div><p class="eyebrow">INSTRUMENTATION STATUS</p><h2>What is not measured yet</h2></div></div><div class="limitation-grid"><span>Context minimization <b>NOT MEASURED</b></span><span>OCR / visual regions <b>NOT IMPLEMENTED</b></span><span>Per-stage latency <b>NOT MEASURED</b></span><span>Action verification <b>NOT IMPLEMENTED</b></span></div></section>
-    </main>
-    <footer><span>PraxSight / local-first agent boundary</span><span id="backendVersion">backend status: checking</span></footer>
-  </div>
-  <script src="/dashboard/dashboard.js"></script>
+      <!-- Live Perception Panel -->
+      <div class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">LIVE PERCEPTION</p>
+            <h2>What the browser sees</h2>
+          </div>
+          <span class="badge" id="scanBadge">IDLE</span>
+        </div>
+
+        <div class="metric-grid">
+          <div class="metric"><span>Inputs</span><strong id="inputsMetric">—</strong></div>
+          <div class="metric"><span>Controls</span><strong id="interactiveMetric">—</strong></div>
+          <div class="metric"><span>Text nodes</span><strong id="textMetric">—</strong></div>
+        </div>
+
+        <div class="data-row">
+          <span>Sensitive entities detected</span>
+          <strong id="detectedMetric">—</strong>
+        </div>
+        <div class="data-row">
+          <span>Entities redacted</span>
+          <strong class="safe-text" id="redactedMetric">—</strong>
+        </div>
+        <div class="data-row">
+          <span>Raw PII sent to server</span>
+          <strong class="safe-text">0</strong>
+        </div>
+      </div>
+
+      <!-- Agent Action Panel -->
+      <div class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">AGENT ACTION</p>
+            <h2>Structured decision</h2>
+          </div>
+          <span class="badge" id="actionBadge">WAITING</span>
+        </div>
+
+        <label class="field-label" for="taskInput">TASK</label>
+        <textarea id="taskInput" rows="2">Resolve this support ticket</textarea>
+
+        <div id="actionEmpty" class="empty-state">
+          Run a scan, then send sanitized context to the agent.
+        </div>
+        <div id="actionDetails" hidden>
+          <div class="action-name" id="actionName">—</div>
+          <div class="data-row"><span>Target element</span><strong id="actionTarget" style="font-family:'JetBrains Mono',monospace;font-size:12px;">—</strong></div>
+          <div class="data-row"><span>Risk level</span><strong id="actionRisk">—</strong></div>
+          <div class="data-row"><span>Requires approval</span><strong id="actionApproval">—</strong></div>
+          <p class="reason" id="actionReason">—</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Privacy Firewall + Network Guard -->
+    <div class="content-grid lower-grid">
+
+      <!-- Privacy Firewall -->
+      <div class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">PRIVACY FIREWALL</p>
+            <h2>Transmission boundary</h2>
+          </div>
+          <span class="badge safe-badge">FAIL-CLOSED</span>
+        </div>
+        <div class="firewall-columns">
+          <div>
+            <span class="column-label">RAW PAGE DATA (browser only)</span>
+            <pre id="rawPreview">No scan captured yet.</pre>
+          </div>
+          <div>
+            <span class="column-label safe-text">SANITIZED PAYLOAD (server receives)</span>
+            <pre id="sanitizedPreview">No sanitized payload yet.</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- Network Guard -->
+      <div class="panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">NETWORK GUARD</p>
+            <h2>Gate decisions</h2>
+          </div>
+          <button class="button button-quiet button-small" id="refreshLog">Refresh</button>
+        </div>
+        <div id="networkLog" class="network-log">
+          <div class="empty-state">No request log — extension bridge not connected.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Honest Instrumentation Status -->
+    <section class="panel honest-limitations">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">INSTRUMENTATION STATUS</p>
+          <h2>What is measured vs. not yet measured</h2>
+        </div>
+      </div>
+      <div class="limitation-grid">
+        <span>DOM + text perception <b>MEASURED (unit-tested)</b></span>
+        <span>PII detection precision/recall <b>NOT BENCHMARKED</b></span>
+        <span>Three-layer privacy gate <b>VERIFIED (TestClient)</b></span>
+        <span>OCR / visual regions <b>NOT IMPLEMENTED</b></span>
+        <span>Per-request latency <b>MEASURED (Network Guard)</b></span>
+        <span>Per-stage latency breakdown <b>NOT INSTRUMENTED</b></span>
+        <span>Human approval gate <b>IMPLEMENTED</b></span>
+        <span>Post-action verification <b>NOT IMPLEMENTED (roadmap)</b></span>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    <span>PraxSight / SIH26171 / ISRO Smart Automation</span>
+    <span id="backendVersion">backend: checking…</span>
+  </footer>
+</div>
+
+<script src="/dashboard/dashboard.js"></script>
 </body>
 </html>

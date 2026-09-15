@@ -125,8 +125,12 @@ async function sendSanitizedContext(payload) {
 
 async function scanActivePageForDashboard(senderTabId) {
   const tabs = await chrome.tabs.query({ currentWindow: true });
-  const target = tabs.find((tab) => tab.active && tab.id !== senderTabId && tab.url && !tab.url.startsWith(`${BACKEND_URL}/dashboard`))
-    || tabs.find((tab) => tab.id !== senderTabId && tab.url && !tab.url.startsWith(`${BACKEND_URL}/dashboard`));
+  let target = tabs.find((tab) => tab.url && tab.url.startsWith(`${BACKEND_URL}/demo/`));
+  
+  if (!target) {
+    target = tabs.find((tab) => tab.id !== senderTabId && tab.url && tab.url.startsWith("http") && !tab.url.startsWith(`${BACKEND_URL}/dashboard`));
+  }
+  
   if (!target || !target.id) return { ok: false, error: "open_the_demo_page_in_another_tab" };
   try {
     const result = await chrome.tabs.sendMessage(target.id, { type: "PRAXSIGHT_SCAN" });

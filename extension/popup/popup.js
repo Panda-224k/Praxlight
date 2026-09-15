@@ -9,11 +9,17 @@ async function getActiveTab() {
 }
 
 function sendToTab(tabId, message) {
-  return new Promise((resolve) => chrome.tabs.sendMessage(tabId, message, resolve));
+  return new Promise((resolve) => chrome.tabs.sendMessage(tabId, message, (r) => {
+    if (chrome.runtime.lastError) { resolve(null); return; }
+    resolve(r);
+  }));
 }
 
 function sendToBackground(message) {
-  return new Promise((resolve) => chrome.runtime.sendMessage(message, resolve));
+  return new Promise((resolve) => chrome.runtime.sendMessage(message, (r) => {
+    if (chrome.runtime.lastError) { resolve(null); return; }
+    resolve(r);
+  }));
 }
 
 function traceStep(label, status) {
@@ -169,12 +175,22 @@ async function loadLog() {
 }
 
 async function checkBackend() {
-  const el = $("backendStatus");
+  const el = $('backendStatus');
+  const label = $('modeLabel');
   try {
-    const resp = await fetch("http://localhost:8000/api/health", { method: "GET" });
-    el.dataset.state = resp.ok ? "ok" : "down";
+    const resp = await fetch('http://localhost:8000/api/health', { method: 'GET' });
+    const data = await resp.json().catch(() => ({}));
+    el.dataset.state = resp.ok ? 'ok' : 'down';
+    if (resp.ok && data.model_router) {
+      const active = data.model_router.active;
+      label.textContent = active === 'deterministic' ? 'offline' :
+        active === 'openrouter' ? 'LLM' : active || 'online';
+    } else {
+      label.textContent = resp.ok ? 'online' : 'offline';
+    }
   } catch {
-    el.dataset.state = "down";
+    el.dataset.state = 'down';
+    label.textContent = 'no server';
   }
 }
 

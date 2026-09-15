@@ -1,0 +1,147 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>AxisVault NetBanking — Transfer Funds</title>
+<style>
+  :root {
+    --bg: #f0f4f8; --panel: #ffffff; --border: #dde5ef; --ink: #1a2535;
+    --muted: #5c6e82; --accent: #1a56db; --danger: #dc2626; --safe: #16a34a;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,"Segoe UI",sans-serif; }
+  header { background:#0f1f3d; color:#fff; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; }
+  .brand { font-weight:800; letter-spacing:.04em; font-size:16px; }
+  .badge-synth { font-size:11px; color:#7ab3ef; }
+  main { max-width:680px; margin:28px auto; padding:0 16px 80px; display:flex; flex-direction:column; gap:16px; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:20px 22px; }
+  .panel h2 { margin:0 0 14px; font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .field { margin-bottom:12px; }
+  .field label { display:block; font-size:11px; color:var(--muted); margin-bottom:4px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+  .field input, .field select {
+    width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:8px;
+    font-size:13px; color:var(--ink); background:#fafbfd;
+  }
+  .row { display:flex; gap:12px; }
+  .row .field { flex:1; }
+  .balance-strip { background:#f7f9fc; border:1px solid var(--border); border-radius:8px; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .balance-strip .lbl { font-size:11px; color:var(--muted); font-weight:600; }
+  .balance-strip .val { font-size:18px; font-weight:800; color:var(--ink); }
+  .actions { display:flex; gap:10px; margin-top:4px; }
+  button { font-size:13px; font-weight:600; padding:10px 18px; border-radius:8px; cursor:pointer; border:1px solid transparent; }
+  #transferBtn { background:var(--accent); color:#fff; }
+  #scheduleBtn { background:#fff; color:var(--accent); border-color:var(--accent); }
+  #cancelBtn   { background:#fff; color:var(--muted); border-color:var(--border); }
+  .otp-notice { font-size:12px; color:var(--muted); margin-top:10px; }
+  .status-line { font-size:12px; color:var(--muted); margin-top:12px; }
+  .pii-note { font-size:11px; background:#fff7ed; border:1px solid #fed7aa; border-radius:6px; padding:8px 12px; color:#9a3412; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="brand">AxisVault NetBanking</span>
+  <span class="badge-synth">All data on this page is SYNTHETIC — built for PraxSight SIH26171 demo only.</span>
+</header>
+
+<main>
+
+  <section class="panel">
+    <h2>Account Overview</h2>
+    <div class="balance-strip">
+      <div>
+        <div class="lbl">Available Balance</div>
+        <div class="val">₹1,24,850.00</div>
+      </div>
+      <div>
+        <div class="lbl">Account No.</div>
+        <div class="val">9182 7364 5523</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Account Holder</label>
+        <input type="text" id="holderName" name="full_name" value="Priya Venkataraman" autocomplete="name" readonly />
+      </div>
+      <div class="field">
+        <label>PAN</label>
+        <input type="text" id="panField" value="BCRPV8819K" readonly />
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="holderEmail" name="email" value="priya.v@example-bank.in" autocomplete="email" readonly />
+      </div>
+      <div class="field">
+        <label>Mobile</label>
+        <input type="tel" id="holderPhone" name="phone" value="+91 98765 43210" autocomplete="tel" readonly />
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Fund Transfer — NEFT / IMPS</h2>
+
+    <div class="row">
+      <div class="field">
+        <label>Beneficiary Account No.</label>
+        <input type="text" id="benAcct" name="account_number" value="4477 1122 8833 6611" />
+      </div>
+      <div class="field">
+        <label>IFSC Code</label>
+        <input type="text" id="ifsc" value="HDFC0001234" />
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Beneficiary Name</label>
+        <input type="text" id="benName" name="full_name" value="Rahul Sharma" autocomplete="name" />
+      </div>
+      <div class="field">
+        <label>Amount (₹)</label>
+        <input type="number" id="amount" value="15000" min="1" />
+      </div>
+    </div>
+    <div class="field">
+      <label>Remarks</label>
+      <input type="text" id="remarks" value="Freelance payment for September" />
+    </div>
+    <div class="field">
+      <label>Transfer Mode</label>
+      <select id="mode">
+        <option value="imps">IMPS (Instant)</option>
+        <option value="neft">NEFT (2–4 hours)</option>
+        <option value="rtgs">RTGS (High value)</option>
+      </select>
+    </div>
+
+    <div class="pii-note">
+      This page contains account numbers, PAN, email, and phone. PraxSight will detect and redact all of these
+      before any AI agent sees the page context.
+    </div>
+
+    <div class="actions">
+      <button id="transferBtn" type="button">Confirm Transfer</button>
+      <button id="scheduleBtn" type="button">Schedule</button>
+      <button id="cancelBtn"   type="button">Cancel</button>
+    </div>
+
+    <div class="otp-notice">An OTP will be sent to +91 ●●●●● 43210 for confirmation.</div>
+    <p class="status-line" id="statusLine">No action taken yet.</p>
+  </section>
+
+</main>
+
+<script>
+  const wire = (id, label) =>
+    document.getElementById(id)?.addEventListener('click', () => {
+      document.getElementById('statusLine').textContent =
+        `${label} — clicked at ${new Date().toLocaleTimeString()}`;
+    });
+  wire('transferBtn', 'Transfer initiated — OTP sent');
+  wire('scheduleBtn', 'Transfer scheduled');
+  wire('cancelBtn',   'Transfer cancelled');
+</script>
+</body>
+</html>

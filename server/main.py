@@ -67,12 +67,36 @@ if DASHBOARD_DIR.exists():
 
 @app.get("/")
 async def dashboard_index():
-    return {"service": "praxsight-agent-api", "dashboard": "/dashboard/", "demo": "/demo/support-ticket/"}
+    return {
+        "service": "praxsight-agent-api",
+        "version": "0.2.0",
+        "dashboard": "/dashboard/",
+        "demos": {
+            "support-ticket": "/demo/support-ticket/",
+            "banking": "/demo/banking/",
+        },
+        "model_router": model_router.status(),
+    }
 
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "service": "praxsight-agent-api", "version": "0.1.0"}
+    return {
+        "status": "ok",
+        "service": "praxsight-agent-api",
+        "version": "0.2.0",
+        "model_router": model_router.status(),
+    }
+
+
+@app.post("/api/demo/reset")
+async def demo_reset():
+    """One-click demo reset: clears session state. Used by Dashboard DEMO MODE button."""
+    global latest_session
+    latest_session = {"updated_at": None, "scan": None, "action": None, "network": None}
+    persist_session()
+    log.info("Demo session reset via /api/demo/reset")
+    return {"ok": True, "message": "Session cleared — ready for a fresh demo."}
 
 
 @app.get("/api/session/latest")

@@ -1,5 +1,5 @@
 """
-PraxSight — Command Validator (Phase 7/8)
+PraxLight — Command Validator (Phase 7/8)
 
 Runs on every AgentAction before it is returned to the extension. The model
 router in agent.py never talks to the browser directly — everything it
@@ -51,4 +51,5 @@ def validate_action(action: AgentAction, elements: ElementsPayload) -> AgentActi
         action.requires_approval = True
 
     action.validated = True
+    action.status = "PENDING_APPROVAL" if action.requires_approval else "VALIDATED"
     return action

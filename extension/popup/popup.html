@@ -1,15 +1,15 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>PraxSight</title>
+<title>PraxLight</title>
 <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
   <header class="rail">
-    <div class="rail-mark">PS</div>
+    <div class="rail-mark">PL</div>
     <div class="rail-heading">
-      <h1>PraxSight</h1>
+      <h1>PraxLight</h1>
       <p>Privacy firewall for browser agents</p>
     </div>
     <div class="rail-status" id="backendStatus" data-state="unknown">
@@ -23,7 +23,10 @@
     <section class="panel" id="scanPanel">
       <div class="panel-row">
         <h2>1 · Local Scan</h2>
-        <button class="btn btn-ghost btn-small" id="scanBtn">Scan this page</button>
+        <div>
+          <button class="btn btn-ghost btn-small" id="scanBtn">Scan page</button>
+          <button class="btn btn-ghost btn-small" id="scanOcrBtn">Scan images (OCR)</button>
+        </div>
       </div>
       <div class="readout-grid" id="scanCounts">
         <div class="readout">
@@ -58,6 +61,10 @@
         <div class="readout accent-safe">
           <span class="readout-label">Raw sent</span>
           <span class="readout-value" id="mRawSent">0</span>
+        </div>
+        <div class="readout">
+          <span class="readout-label">OCR Time</span>
+          <span class="readout-value" id="mOcrLatency">–</span>
         </div>
       </div>
       <div class="split">

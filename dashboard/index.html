@@ -1,10 +1,10 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#080e14">
-  <title>PraxSight — Privacy Instrument Console</title>
+  <title>PraxLight — Privacy Instrument Console</title>
   <meta name="description" content="SIH26171: On-device Visual Perception for Light-weight Browser Agents — live privacy gate instrument console.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,7 +18,7 @@
     <div class="brand-lockup">
       <div class="brand-mark">PS</div>
       <div>
-        <strong>PraxSight</strong>
+        <strong>PraxLight</strong>
         <span>Privacy Instrument Console</span>
       </div>
     </div>
@@ -57,7 +57,7 @@
         <p class="eyebrow">LIVE CONTROL SURFACE / <span id="lastUpdated">waiting for first scan</span></p>
         <h1 class="hero-title" id="heroTitle">Awaiting browser scan</h1>
         <p class="hero-description" id="heroDescription">
-          Load the PraxSight extension in Chrome, open the demo page, then run a scan from here.
+          Load the PraxLight extension in Chrome, open the demo page, then run a scan from here.
           All detection and redaction happens locally — no raw PII leaves the browser.
         </p>
         <div class="hero-actions">
@@ -167,9 +167,21 @@
         <div id="actionDetails" hidden>
           <div class="action-name" id="actionName">—</div>
           <div class="data-row"><span>Target element</span><strong id="actionTarget" style="font-family:'JetBrains Mono',monospace;font-size:12px;">—</strong></div>
-          <div class="data-row"><span>Risk level</span><strong id="actionRisk">—</strong></div>
-          <div class="data-row"><span>Requires approval</span><strong id="actionApproval">—</strong></div>
+          <div class="data-row"><span>Risk level</span><strong id="actionRisk" class="badge">—</strong></div>
+          <div class="data-row"><span>Execution Status</span><strong id="actionStatus">—</strong></div>
           <p class="reason" id="actionReason">—</p>
+          
+          <!-- Human-in-the-loop Approval UI -->
+          <div id="approvalGate" class="approval-gate" hidden>
+            <div class="gate-warning">
+              <strong>⚠️ PENDING APPROVAL</strong>
+              <p>The agent proposed a high-risk action. Human authorization is required to proceed.</p>
+            </div>
+            <div class="gate-actions">
+              <button class="button button-danger" id="btnReject">Reject</button>
+              <button class="button button-primary" id="btnApprove">Approve & Execute</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -236,7 +248,7 @@
   </main>
 
   <footer>
-    <span>PraxSight / SIH26171 / ISRO Smart Automation</span>
+    <span>PraxLight / SIH26171 / ISRO Smart Automation</span>
     <span id="backendVersion">backend: checking…</span>
   </footer>
 </div>

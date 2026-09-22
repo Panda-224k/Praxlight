@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>PraxBank KYC — Identity Verification</title>
+<style>
+  :root {
+    --bg: #f0f4f8; --panel: #ffffff; --border: #dde5ef; --ink: #1a2535;
+    --muted: #5c6e82; --accent: #1a56db;
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,"Segoe UI",sans-serif; }
+  header { background:#0f1f3d; color:#fff; padding:14px 24px; display:flex; align-items:center; justify-content:space-between; }
+  .brand { font-weight:800; letter-spacing:.04em; font-size:16px; }
+  .badge-synth { font-size:11px; color:#7ab3ef; }
+  main { max-width:680px; margin:28px auto; padding:0 16px 80px; display:flex; flex-direction:column; gap:16px; }
+  .panel { background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:20px 22px; }
+  .panel h2 { margin:0 0 14px; font-size:13px; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+  .pii-note { font-size:11px; background:#fff7ed; border:1px solid #fed7aa; border-radius:6px; padding:8px 12px; color:#9a3412; margin-bottom:16px; }
+  .canvas-container { border: 2px dashed var(--border); border-radius: 8px; padding: 16px; text-align: center; background: #f7f9fc; }
+  canvas { max-width: 100%; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: white; }
+  .actions { display:flex; gap:10px; margin-top:16px; }
+  button { font-size:13px; font-weight:600; padding:10px 18px; border-radius:8px; cursor:pointer; border:1px solid transparent; }
+  #submitBtn { background:var(--accent); color:#fff; }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="brand">PraxBank KYC</span>
+  <span class="badge-synth">All data on this page is SYNTHETIC — built for PraxLight SIH26171 demo only.</span>
+</header>
+
+<main>
+  <section class="panel">
+    <h2>Identity Document Upload</h2>
+    
+    <div class="pii-note">
+      This page contains an image of a synthetic identity card rendered on an HTML &lt;canvas&gt;.<br/>
+      The text embedded inside this image (Name, PAN, DOB) is invisible to standard DOM parsers. PraxLight's optional OCR pass extracts and redacts it completely locally.
+    </div>
+
+    <div class="canvas-container">
+      <canvas id="idCanvas" width="400" height="250"></canvas>
+    </div>
+
+    <div class="actions">
+      <button id="submitBtn" type="button">Submit Document</button>
+    </div>
+  </section>
+</main>
+
+<script>
+  const canvas = document.getElementById('idCanvas');
+  const ctx = canvas.getContext('2d');
+
+  // Draw card background
+  ctx.fillStyle = '#fdfdfd';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Header
+  ctx.fillStyle = '#e8f0fe';
+  ctx.fillRect(0, 0, canvas.width, 50);
+  ctx.fillStyle = '#1a56db';
+  ctx.font = 'bold 18px sans-serif';
+  ctx.fillText('REPUBLIC OF INDIA - INCOME TAX DEPT', 15, 32);
+
+  // Photo placeholder
+  ctx.fillStyle = '#dde5ef';
+  ctx.fillRect(20, 70, 90, 110);
+  ctx.fillStyle = '#5c6e82';
+  ctx.font = '12px sans-serif';
+  ctx.fillText('PHOTO', 45, 125);
+
+  // Text Data
+  ctx.fillStyle = '#1a2535';
+  
+  ctx.font = '11px sans-serif';
+  ctx.fillText('Name', 130, 85);
+  ctx.font = 'bold 15px sans-serif';
+  ctx.fillText('VIKRAM SINGH', 130, 102);
+
+  ctx.font = '11px sans-serif';
+  ctx.fillText('Father\'s Name', 130, 130);
+  ctx.font = 'bold 13px sans-serif';
+  ctx.fillText('RAJESH SINGH', 130, 145);
+
+  ctx.font = '11px sans-serif';
+  ctx.fillText('Date of Birth', 130, 175);
+  ctx.font = 'bold 13px sans-serif';
+  ctx.fillText('14/08/1985', 130, 190);
+
+  ctx.font = '11px sans-serif';
+  ctx.fillText('Permanent Account Number', 130, 220);
+  ctx.font = 'bold 16px monospace';
+  ctx.fillText('BXGPR4592L', 130, 238);
+
+  document.getElementById('submitBtn').addEventListener('click', () => {
+    alert('Document submitted');
+  });
+</script>
+</body>
+</html>

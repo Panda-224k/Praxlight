@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PraxSight — Server-side Reasoning + Structured Action API
+PraxLight — Server-side Reasoning + Structured Action API
 SIH26171
 
 This process receives ONLY sanitized, redacted context from the browser
@@ -22,13 +22,19 @@ load_dotenv(BASE_DIR / ".env")
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from schemas import AgentAction, AgentActRequest
 from validator import ValidationError, validate_action
 from agent import router as model_router
+from agent_engine import AgentPipeline
+from monitor import AuditLogger, monitor as offline_monitor
+from ocr import scanner as ocr_scanner
+from privacy.engine import sanitize_text
+
+agent_pipeline = AgentPipeline(model_router)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("praxsight")
@@ -47,7 +53,7 @@ if SESSION_FILE.exists():
 def persist_session():
     SESSION_FILE.write_text(json.dumps(latest_session), encoding="utf-8")
 
-app = FastAPI(title="PraxSight Agent API", version="0.1.0", docs_url="/api/docs", redoc_url=None)
+app = FastAPI(title="PraxLight Agent API", version="0.1.0", docs_url="/api/docs", redoc_url=None)
 
 # Dev-only: unrestricted CORS so the unpacked extension can call in from any
 # extension ID during development. Scope this to chrome-extension://<id> and
@@ -95,9 +101,20 @@ async def demo_reset():
     global latest_session
     latest_session = {"updated_at": None, "scan": None, "action": None, "network": None}
     persist_session()
+    
+    # Reset network monitor counters on demo reset
+    offline_monitor.requests_attempted = 0
+    offline_monitor.requests_blocked = 0
+    offline_monitor.bytes_transmitted = 0
+    offline_monitor.bytes_received = 0
+    
     log.info("Demo session reset via /api/demo/reset")
     return {"ok": True, "message": "Session cleared — ready for a fresh demo."}
 
+@app.get("/api/monitor/status")
+async def get_monitor_status():
+    """Returns the current state of the Zero-Network Proof monitor."""
+    return offline_monitor.to_dict()
 
 @app.get("/api/session/latest")
 async def latest_session_state():
@@ -116,6 +133,35 @@ async def update_session_state(event: dict):
     latest_session["updated_at"] = datetime.now(timezone.utc).isoformat()
     persist_session()
     return {"ok": True, "updated_at": latest_session["updated_at"]}
+
+
+@app.post("/api/documents/scan")
+async def scan_document(file: UploadFile = File(...)):
+    """
+    Offline Kiosk Use Case (Phase 8).
+    Accepts physical paper scans, runs local OCR, and immediately pipes
+    the raw text through the Safe-Context Engine before returning.
+    """
+    if not ocr_scanner.available:
+        raise HTTPException(status_code=503, detail="OCR engine is unavailable on this machine (Tesseract not installed).")
+
+    try:
+        image_bytes = await file.read()
+        raw_text = ocr_scanner.scan_image(image_bytes)
+        
+        if not raw_text:
+            return {"ok": False, "message": "No text detected."}
+            
+        safe_text, audit = sanitize_text(raw_text, source_id="ocr-scan")
+        
+        return {
+            "ok": True,
+            "safe_text": safe_text,
+            "privacy_audit": audit.to_dict()
+        }
+    except Exception as e:
+        log.error("OCR API error: %s", e)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/agent/act", response_model=AgentAction)
@@ -137,13 +183,13 @@ async def agent_act(req: AgentActRequest):
         req.page_url,
     )
 
-    action = await model_router.reason(req)
+    action = await agent_pipeline.execute(req)
 
-    try:
-        action = validate_action(action, req.elements)
-    except ValidationError as e:
-        log.warning("agent_act validation rejected action: %s", e)
-        raise HTTPException(422, str(e))
+    # 4. If action requires approval, halt execution state
+    if action.status == "PENDING_APPROVAL":
+        log.info("Agent action halted pending human approval.")
+    
+    # 5. VERIFY (Session persistence)
 
     latest_session.update({
         "updated_at": datetime.now(timezone.utc).isoformat(),
@@ -163,6 +209,8 @@ async def agent_act(req: AgentActRequest):
         "network": {"status": "ALLOWED"},
     })
     persist_session()
+    
+    AuditLogger.log_agent_execution(req, action, offline_monitor.to_dict())
 
     return action
 

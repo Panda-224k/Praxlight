@@ -1,4 +1,4 @@
-# PraxSight — Structured Agent Action Protocol
+# PraxLight — Structured Agent Action Protocol
 
 The server never returns arbitrary JavaScript or a free-text plan. It
 returns exactly one `AgentAction` (`server/schemas.py`), and that action only

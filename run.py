@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-PraxSight — One-Command Launcher
+PraxLight — One-Command Launcher
 Starts the FastAPI backend (which also serves the demo pages) and prints
 exactly what to do next to load the extension.
 Usage: python run.py
@@ -26,7 +26,7 @@ DASHBOARD_URL = f"{BACKEND_URL}/dashboard/"
 def print_banner():
     print()
     print("  +----------------------------------------------------+")
-    print("  |   PraxSight  ·  SIH26171  ·  v0.1.0               |")
+    print("  |   PraxLight  ·  SIH26171  ·  v0.1.0              |")
     print("  +----------------------------------------------------+")
     print(f"  |  Backend API   -> {BACKEND_URL:<32} |")
     print(f"  |  API docs      -> {BACKEND_URL + '/api/docs':<32} |")
@@ -36,7 +36,7 @@ def print_banner():
     print()
     print("  Next: chrome://extensions -> Developer mode -> Load unpacked")
     print("  -> select the extension/ folder. Then open the demo page above")
-    print("  and click the PraxSight toolbar icon.")
+    print("  and click the PraxLight toolbar icon.")
     print()
 
 

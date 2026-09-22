@@ -1,4 +1,4 @@
-# PraxSight — Privacy Model
+# PraxLight — Privacy Model
 
 ## What gets detected
 

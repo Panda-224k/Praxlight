@@ -1,4 +1,4 @@
-# PraxSight — Architecture
+# PraxLight — Architecture
 
 ## Component map
 
@@ -54,6 +54,7 @@ inside that iframe are not further recursed into, to bound cost.
 ```
 raw DOM/text
   → perception.js            (plain-data snapshot)
+  → (optional) ocr-engine.js + Tesseract.js in offscreen document
   → detectors.js              (Detection[] with type/severity/confidence)
   → policy-engine.js          (Detection[] + action, privacy_manifest)
   → redaction.js               (sanitized snapshot, same shape as perception)

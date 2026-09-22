@@ -51,12 +51,19 @@ class ElementsPayload(BaseModel):
     interactive: List[SanitizedInteractive] = Field(default_factory=list)
 
 
+class ToolPermissions(BaseModel):
+    allow_rag: bool = True
+    allow_browser: bool = True
+    allow_calculator: bool = False
+    allow_file_reader: bool = False
+
 class AgentActRequest(BaseModel):
     task: str = Field(..., min_length=1, max_length=2000)
     page_url: str
     elements: ElementsPayload
     text_context: List[SanitizedTextNode] = Field(default_factory=list)
     privacy_manifest: PrivacyManifest
+    tool_permissions: ToolPermissions = Field(default_factory=ToolPermissions)
 
 
 class ActionTarget(BaseModel):
@@ -75,3 +82,4 @@ class AgentAction(BaseModel):
     risk: Literal["low", "medium", "high"] = "low"
     requires_approval: bool = False
     validated: bool = False
+    status: Literal["DRAFT", "VALIDATED", "PENDING_APPROVAL", "APPROVED", "EXECUTED"] = "DRAFT"

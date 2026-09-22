@@ -1,0 +1,21 @@
+﻿<!DOCTYPE html>
+<html>
+<body>
+<script src="extension/lib/tesseract/tesseract.min.js"></script>
+<script>
+  (async () => {
+    try {
+      const worker = await Tesseract.createWorker('eng', 1, {
+        workerPath: 'extension/lib/tesseract/worker.min.js',
+        corePath: 'extension/lib/tesseract/tesseract-core.wasm.js',
+        langPath: 'extension/lib/tesseract/lang-data',
+        workerBlobURL: false
+      });
+      console.log('Worker created', worker);
+    } catch(e) {
+      console.error('Error in createWorker', e);
+    }
+  })();
+</script>
+</body>
+</html>

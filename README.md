@@ -1,11 +1,11 @@
-# PraxSight
+﻿# PraxLight
 
-**SIH26171 — On-device Visual Perception for Light-weight Browser Agents**
-Organization: ISRO · Category: Software · Theme: Miscellaneous
+**SIH26171 â€” On-device Visual Perception for Light-weight Browser Agents**
+Organization: ISRO Â· Category: Software Â· Theme: Miscellaneous
 
 > See locally. Redact locally. Reason on sanitized context. Act only with a human's OK.
 
-PraxSight is a Manifest V3 browser extension plus a small FastAPI backend. The
+PraxLight is a Manifest V3 browser extension plus a small FastAPI backend. The
 extension reads the current page's DOM and text locally, detects PII with
 regex + structural rules, replaces it with semantic tokens (`[EMAIL_1]`,
 `[PERSON_1]`, `[CARD_REDACTED]`), and only *then* is the sanitized page state
@@ -14,9 +14,9 @@ browser action for a human to approve.
 
 ## Why this exists (and what it isn't)
 
-This is **not** a PII redactor — Microsoft Presidio, [maskera](https://github.com)
+This is **not** a PII redactor â€” Microsoft Presidio, [maskera](https://github.com)
 and OSSRedact already do that well for static text before a chat call. None of
-them protect a *browser agent mid-action* on a live page. PraxSight's actual
+them protect a *browser agent mid-action* on a live page. PraxLight's actual
 contribution is the layer underneath an agent: DOM-anchored redaction tied to
 the actual clickable elements, a structured command protocol the model can't
 escape, a validator, and a human approval gate before anything executes. See
@@ -26,34 +26,34 @@ escape, a validator, and a human approval gate before anything executes. See
 
 ```
 Page DOM/text
-     │
-     ▼
-Local perception (extension/content/perception.js)         — Phase 1
-     │
-     ▼
-Rules-based PII detection (extension/content/privacy/detectors.js)  — Phase 2
-     │
-     ▼
-Policy engine → redaction / semantic tokens                — Phase 4
-     │
-     ▼
-Residual-PII re-scan (content-script.js)                   — defense in depth #1
-     │
-     ▼
-Hard privacy gate — the ONLY fetch() in the extension       — Phase 5
+     â”‚
+     â–¼
+Local perception (extension/content/perception.js)         â€” Phase 1
+     â”‚
+     â–¼
+Rules-based PII detection (extension/content/privacy/detectors.js)  â€” Phase 2
+     â”‚
+     â–¼
+Policy engine â†’ redaction / semantic tokens                â€” Phase 4
+     â”‚
+     â–¼
+Residual-PII re-scan (content-script.js)                   â€” defense in depth #1
+     â”‚
+     â–¼
+Hard privacy gate â€” the ONLY fetch() in the extension       â€” Phase 5
 (extension/background.js: re-checks the manifest + re-scans
  for residual PII before it will call the backend at all)
-     │
-     ▼
-POST /api/agent/act  (server/main.py)                       — Phase 7
-  → server independently refuses payloads without a manifest — defense in depth #2
-  → model router proposes ONE structured action              (server/agent.py)
-  → validator rejects unknown selectors / disabled commands   (server/validator.py)
-     │
-     ▼
-Popup shows the action + reason, human Approves or Rejects   — Phase 8
-     │
-     ▼
+     â”‚
+     â–¼
+POST /api/agent/act  (server/main.py)                       â€” Phase 7
+  â†’ server independently refuses payloads without a manifest â€” defense in depth #2
+  â†’ model router proposes ONE structured action              (server/agent.py)
+  â†’ validator rejects unknown selectors / disabled commands   (server/validator.py)
+     â”‚
+     â–¼
+Popup shows the action + reason, human Approves or Rejects   â€” Phase 8
+     â”‚
+     â–¼
 content-script.js executes ONLY that exact action on that exact element
 ```
 
@@ -77,35 +77,35 @@ page at `http://localhost:8000/demo/support-ticket/`.
 
 1. Open `chrome://extensions`
 2. Enable **Developer mode** (top right)
-3. **Load unpacked** → select the `extension/` folder
-4. Open the demo page from step 1, click the PraxSight icon in the toolbar
+3. **Load unpacked** â†’ select the `extension/` folder
+4. Open the demo page from step 1, click the PraxLight icon in the toolbar
 
 ### 3. Try the flagship flow
 
-1. Click **Scan this page** → watch the Privacy Firewall panel show raw vs.
+1. Click **Scan this page** â†’ watch the Privacy Firewall panel show raw vs.
    sanitized text side by side, with a live entity count.
-2. Leave the task as *"Resolve this support ticket"* → click **Send sanitized
-   context → run agent**.
-3. Watch the agent trace: perceive → detect → redact → gate check → send →
-   reason → validate.
+2. Leave the task as *"Resolve this support ticket"* â†’ click **Send sanitized
+   context â†’ run agent**.
+3. Watch the agent trace: perceive â†’ detect â†’ redact â†’ gate check â†’ send â†’
+   reason â†’ validate.
 4. An approval card appears (clicking "Resolve Ticket" is treated as an
-   irreversible action) — **Approve** to actually click the button on the
+   irreversible action) â€” **Approve** to actually click the button on the
    live page, or **Reject** to stop there.
-5. Check **Network guard** at the bottom of the popup — every request the
+5. Check **Network guard** at the bottom of the popup â€” every request the
    extension made to the backend is logged with its redaction counts,
    payload size, and latency.
 
 ## Tests
 
 ```bash
-# One-time setup for the JS test suite (jsdom is dev-only — the extension
+# One-time setup for the JS test suite (jsdom is dev-only â€” the extension
 # itself has no build step and no npm dependency at all)
 npm install
 
-# Detection / redaction / policy engine — pure JS
+# Detection / redaction / policy engine â€” pure JS
 node --test tests/test_pii_lib.cjs
 
-# DOM perception (jsdom-backed — added in Phase 2)
+# DOM perception (jsdom-backed â€” added in Phase 2)
 node --test tests/test_perception.cjs
 
 # Structured-action validator
@@ -122,14 +122,14 @@ extension/            Manifest V3 browser extension
     perception.js       DOM extraction (Phase 1)
     privacy/
       detectors.js        rules-based PII detection (Phase 2) + DetectionBackend interface (Phase 3)
-      model-backends.js   Gemini Nano / Transformers.js adapter STUBS — not wired in yet
+      model-backends.js   Gemini Nano / Transformers.js adapter STUBS â€” not wired in yet
       redaction.js         semantic token redaction (Phase 4)
-      policy-engine.js     severity → action, builds the privacy manifest
+      policy-engine.js     severity â†’ action, builds the privacy manifest
     content-script.js   orchestrates the scan + executes approved actions
   popup/                Privacy Firewall / agent trace / approval / network guard UI
 
 server/                FastAPI backend
-  main.py                /api/agent/act — never receives raw PII
+  main.py                /api/agent/act â€” never receives raw PII
   schemas.py             sanitized-payload + structured-action Pydantic models
   validator.py            rejects unknown selectors, disabled commands, unapproved risk
   agent.py                deterministic offline model router (Phase 7)
@@ -144,6 +144,7 @@ tests/                  Node + pytest unit tests
 This build follows the *scoped* plan (nine phases, one flagship demo, done
 properly) rather than the full 56-phase vision in the original brief. See
 [`docs/CURRENT_IMPLEMENTATION.md`](docs/CURRENT_IMPLEMENTATION.md) for the
-honest breakdown — notably: **no vision/OCR model is wired up yet** (DOM +
+honest breakdown â€” notably: **no vision/OCR model is wired up yet** (DOM +
 text only), and the Gemini Nano / Transformers.js model-backed detection
 layer is a real interface with no live model behind it yet.
+

@@ -1,5 +1,5 @@
-﻿/* ============================================================
-   PraxSight — Instrument Console Dashboard
+/* ============================================================
+   PraxLight — Instrument Console Dashboard
    Premium dark theme redesign — Phase 5
    ============================================================ */
 
@@ -749,3 +749,42 @@ footer {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+/* Approval Gate UI */
+.approval-gate {
+  margin-top: 16px;
+  padding: 12px;
+  background-color: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-md);
+}
+.gate-warning strong {
+  color: var(--warn);
+  display: block;
+  margin-bottom: 4px;
+}
+.gate-warning p {
+  color: var(--ink-muted);
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+.gate-actions {
+  display: flex;
+  gap: 8px;
+}
+.button-danger {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+.button-danger:hover {
+  background-color: rgba(239, 68, 68, 0.2);
+}
+.warn-badge {
+  background: rgba(245, 158, 11, 0.15) !important;
+  color: var(--warn) !important;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.badge[data-risk="low"] { color: var(--safe); }
+.badge[data-risk="medium"] { color: var(--warn); }
+.badge[data-risk="high"] { color: var(--danger); }

@@ -24,14 +24,22 @@
     return { clean: !emailLeft && !cardLeft, checkedAt: new Date().toISOString() };
   }
 
-  async function runScan() {
+  async function runScan(includeImages = false) {
     const perception = PraxSight.perception.capturePage();
     const rawDetections = await PraxSight.detectors.detect(perception);
+    
+    let ocrLatencyMs = 0;
+    if (includeImages && PraxSight.ocr) {
+      const ocrResult = await PraxSight.ocr.detectFromImages(document);
+      rawDetections.push(...ocrResult.detections);
+      ocrLatencyMs = ocrResult.latencyMs;
+    }
+    
     const policed = PraxSight.policyEngine.applyPolicy(rawDetections);
     const sanitized = PraxSight.redaction.sanitizePerception(perception, policed);
     const manifest = PraxSight.policyEngine.buildManifest(policed, sanitized);
     const residual = residualPiiScan(sanitized);
-    lastScan = { perception, detections: policed, sanitized, manifest, residual };
+    lastScan = { perception, detections: policed, sanitized, manifest, residual, ocrLatencyMs };
     return lastScan;
   }
 
@@ -58,29 +66,40 @@
         // 'type' action unless value_policy === 'user-provided' — the agent
         // is structurally prevented from inventing field values.
         return { ok: false, error: "requires_user_input_not_implemented_in_popup" };
-      case "read":
-        return el ? { ok: true, text: el.innerText || el.textContent } : { ok: false, error: "target_not_found" };
+      case "read": {
+        if (el) return { ok: true, text: el.innerText || el.textContent };
+        // No specific target — the agent legitimately found nothing to
+        // click, so fall back to a whole-page read instead of failing.
+        const summary = (document.body && document.body.innerText || "").trim().slice(0, 800);
+        return { ok: true, text: summary || "(no visible text found)" };
+      }
       default:
         return { ok: false, error: "unsupported_action" };
     }
   }
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
-    if (msg.type === "PRAXSIGHT_SCAN") {
-      runScan().then((result) =>
-        sendResponse({
-          ok: true,
-          manifest: result.manifest,
-          residual: result.residual,
-          counts: {
-            inputs: result.perception.inputs.length,
-            interactive: result.perception.interactive.length,
-            textNodes: result.perception.textNodes.length,
-          },
-          raw: result.perception,
-          sanitized: result.sanitized,
-        })
-      );
+    if (msg.type === "PRAXSIGHT_SCAN" || msg.type === "PRAXSIGHT_SCAN_IMAGES") {
+      runScan(msg.type === "PRAXSIGHT_SCAN_IMAGES")
+        .then((result) =>
+          sendResponse({
+            ok: true,
+            manifest: result.manifest,
+            residual: result.residual,
+            ocrLatencyMs: result.ocrLatencyMs,
+            counts: {
+              inputs: result.perception.inputs.length,
+              interactive: result.perception.interactive.length,
+              textNodes: result.perception.textNodes.length,
+            },
+            raw: result.perception,
+            sanitized: result.sanitized,
+          })
+        )
+        .catch((e) => {
+          console.error("runScan failed:", e);
+          sendResponse({ ok: false, error: e.toString() });
+        });
       return true; // async response
     }
 
@@ -139,6 +158,14 @@
     if (event.data.type === "PRAXSIGHT_DASHBOARD_LOG") {
       const log = await new Promise((resolve) => chrome.runtime.sendMessage({ type: "PRAXSIGHT_GET_LOG" }, resolve));
       window.postMessage({ type: "PRAXSIGHT_DASHBOARD_LOG_RESULT", log: log || [] }, window.location.origin);
+    }
+    if (event.data.type === "PRAXSIGHT_DASHBOARD_EXECUTE") {
+      try {
+        const result = await new Promise((resolve) => chrome.runtime.sendMessage({ type: "PRAXSIGHT_EXECUTE_ACTION_ACTIVE", action: event.data.action }, resolve));
+        window.postMessage({ type: "PRAXSIGHT_DASHBOARD_EXECUTE_RESULT", ...result }, window.location.origin);
+      } catch (error) {
+        window.postMessage({ type: "PRAXSIGHT_DASHBOARD_EXECUTE_RESULT", ok: false, error: String(error) }, window.location.origin);
+      }
     }
   });
 })();

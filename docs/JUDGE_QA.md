@@ -1,4 +1,4 @@
-﻿# PraxSight — Judge Q&A Reference
+﻿# PraxLight — Judge Q&A Reference
 
 **Problem Statement:** SIH26171 — "On-device Visual Perception for Light-weight Browser Agents"
 **Sponsor:** ISRO (Indian Space Research Organisation)
@@ -9,7 +9,7 @@
 ## Technical Architecture Questions
 
 **Q: How is this different from a PII blocker like uBlock Origin?**
-A: uBlock blocks page content from loading entirely. PraxSight allows page content to load normally, extracts its structure into a data representation, detects sensitive entities in that representation, redacts them to semantic tokens anchored to specific DOM elements, and then enables a structured AI agent to propose actions on the sanitized page. The agent can resolve tickets, escalate cases, reply to customers — it just cannot see raw PII to do so.
+A: uBlock blocks page content from loading entirely. PraxLight allows page content to load normally, extracts its structure into a data representation, detects sensitive entities in that representation, redacts them to semantic tokens anchored to specific DOM elements, and then enables a structured AI agent to propose actions on the sanitized page. The agent can resolve tickets, escalate cases, reply to customers — it just cannot see raw PII to do so.
 
 **Q: Why DOM-based perception instead of screenshots?**
 A: Screenshots send everything the user sees — card numbers, passwords, government IDs — to a cloud API in a single JPEG. The DOM perception layer produces an inert data object (plain JSON): inputs with their psId/tag/label/value, interactive elements with their text, visible text nodes. PII is detected and redacted in this object before any AI model sees it. Screenshots make redaction after-the-fact and unreliable.
@@ -59,7 +59,7 @@ A: The Network Guard log is populated by background.js writing to chrome.storage
 
 ## SIH Requirement Coverage
 
-| Requirement | PraxSight Coverage |
+| Requirement | PraxLight Coverage |
 |---|---|
 | On-device processing | Full — extension runs entirely local, no network from content-script.js |
 | Lightweight ML for page reading | Partial — rules engine (no model weights). Gemini Nano adapter in model-backends.js is wired but not active. |

@@ -6,8 +6,28 @@
  * - Proper error boundaries
  * - Honest pipeline states
  */
-const state = { scan: null, backend: false, pollingTimer: null };
+const state = { scan: null, backend: false, pollingTimer: null, handledApprovals: new Map() };
 const $ = (id) => document.getElementById(id);
+
+function approvalKey(action) {
+  if (!action) return 'none';
+  const target = action.target?.id || 'none';
+  const reason = action.reason || '';
+  const actionName = action.action || 'action';
+  return `${actionName}::${target}::${reason}`;
+}
+
+function isApprovalHandled(action) {
+  if (!action) return false;
+  return state.handledApprovals.has(approvalKey(action)) || action.status === 'EXECUTED' || action.status === 'REJECTED';
+}
+
+function markApprovalHandled(action, status) {
+  if (!action) return action;
+  const nextAction = { ...action, status, requires_approval: false };
+  state.handledApprovals.set(approvalKey(nextAction), true);
+  return nextAction;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -126,7 +146,12 @@ async function loadLatestSession() {
     const session = await response.json();
 
     if (session.action) {
-      renderAction(session.action);
+      if (isApprovalHandled(session.action)) {
+        const handledAction = markApprovalHandled(session.action, session.action.status === 'REJECTED' ? 'REJECTED' : 'EXECUTED');
+        renderAction(handledAction);
+      } else {
+        renderAction(session.action);
+      }
       $('heroTitle').textContent = 'Latest agent result received';
       $('heroDescription').textContent = 'Structured action passed through the privacy gate and server validation.';
       $('postureDetail').textContent = 'Sanitized context used — raw values remain browser-only.';
@@ -278,18 +303,27 @@ async function runScan() {
 function renderAction(action) {
   $('actionEmpty').hidden = true;
   $('actionDetails').hidden = false;
-  $('actionBadge').textContent = action.requires_approval ? 'NEEDS APPROVAL' : 'EXECUTED';
-  $('actionBadge').className = `badge ${action.requires_approval ? '' : 'ready'}`;
+
+  const handled = isApprovalHandled(action);
+  const isPending = action.status === 'PENDING_APPROVAL' && !handled;
+
+  $('actionBadge').textContent = isPending ? 'NEEDS APPROVAL' : action.status;
+  $('actionBadge').className = `badge ${isPending ? 'warn-badge' : 'ready'}`;
   $('actionName').textContent = action.action.toUpperCase();
   $('actionTarget').textContent = action.target?.id || 'none';
   $('actionRisk').textContent = action.risk;
-  $('actionRisk').className = action.risk === 'high' ? 'danger-text' : action.risk === 'medium' ? 'warn-text' : 'safe-text';
-  $('actionApproval').textContent = action.requires_approval ? 'Yes — see extension popup' : 'No — low risk';
+  $('actionRisk').dataset.risk = action.risk;
+  $('actionStatus').textContent = action.status;
   $('actionReason').textContent = action.reason;
-  setDot('agentDot', action.requires_approval ? 'warn' : 'ok');
+
+  $('approvalGate').hidden = !isPending;
+
+  setDot('agentDot', isPending ? 'warn' : 'ok');
   setPipeline('reason', 'complete');
   setPipeline('validate', action.validated ? 'complete' : 'blocked');
-  setPipeline('act', action.validated ? (action.requires_approval ? 'active' : 'complete') : 'blocked');
+  setPipeline('act', action.validated ? (isPending ? 'active' : 'complete') : 'blocked');
+
+  window._pendingAction = isPending ? action : null;
 }
 
 // ── Agent ─────────────────────────────────────────────────────────────────
@@ -307,8 +341,8 @@ async function runAgent() {
     if (!result.ok) throw new Error(result.error || JSON.stringify(result.data || {}));
     renderAction(result.data);
     showNotice(
-      result.data.requires_approval
-        ? 'Agent proposed an action. Approval required in the extension popup.'
+      result.data.status === 'PENDING_APPROVAL'
+        ? 'Agent proposed a high-risk action. Please review and authorize below.'
         : 'Agent action returned and passed through the server validator.'
     );
     await refreshLog();
@@ -319,6 +353,44 @@ async function runAgent() {
   } finally {
     button.disabled = false;
     button.textContent = '⚡ Run agent';
+  }
+}
+
+// ── Human Approval ────────────────────────────────────────────────────────
+
+async function handleApproval(approved) {
+  if (!window._pendingAction) return;
+  const action = window._pendingAction;
+
+  $('approvalGate').hidden = true;
+  const handledAction = markApprovalHandled(action, approved ? 'EXECUTED' : 'REJECTED');
+  window._pendingAction = null;
+
+  try {
+    await fetch('/api/session/latest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: handledAction }),
+    });
+  } catch {
+    // Best-effort persistence: the UI should already be locally resolved.
+  }
+
+  if (!approved) {
+    renderAction(handledAction);
+    showNotice('Action rejected by user.');
+    return;
+  }
+
+  try {
+    showNotice('Executing approved action...');
+    const result = await requestBridge('PRAXSIGHT_DASHBOARD_EXECUTE', { action: handledAction });
+    if (!result.ok) throw new Error(result.error || 'Execution failed');
+
+    renderAction(handledAction);
+    showNotice('Action successfully executed on the target page.');
+  } catch (error) {
+    showNotice(`Execution failed: ${error.message}`, 'danger');
   }
 }
 
@@ -357,6 +429,8 @@ $('scanButton').addEventListener('click', runScan);
 $('agentButton').addEventListener('click', runAgent);
 $('refreshLog').addEventListener('click', refreshLog);
 $('resetBtn').addEventListener('click', resetDemo);
+$('btnApprove').addEventListener('click', () => handleApproval(true));
+$('btnReject').addEventListener('click', () => handleApproval(false));
 
 // Set initial pipeline state honestly
 setPipeline('see', 'active');

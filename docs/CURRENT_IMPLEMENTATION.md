@@ -1,4 +1,4 @@
-# PraxSight — Current Implementation Status
+# PraxLight — Current Implementation Status
 
 Last updated alongside this build. This file exists so nothing here gets
 described to judges as done when it isn't — same discipline the sibling Prax

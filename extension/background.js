@@ -123,6 +123,25 @@ async function sendSanitizedContext(payload) {
   }
 }
 
+async function sendMessageWithRecovery(tabId, message) {
+  try {
+    return await chrome.tabs.sendMessage(tabId, message);
+  } catch (e) {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: [
+        "content/perception.js",
+        "content/privacy/detectors.js",
+        "content/privacy/redaction.js",
+        "content/privacy/policy-engine.js",
+        "content/ocr/ocr-engine.js",
+        "content/content-script.js",
+      ],
+    });
+    return await chrome.tabs.sendMessage(tabId, message);
+  }
+}
+
 async function scanActivePageForDashboard(senderTabId) {
   const tabs = await chrome.tabs.query({ currentWindow: true });
   let target = tabs.find((tab) => tab.url && tab.url.startsWith(`${BACKEND_URL}/demo/`));
@@ -133,14 +152,53 @@ async function scanActivePageForDashboard(senderTabId) {
   
   if (!target || !target.id) return { ok: false, error: "open_the_demo_page_in_another_tab" };
   try {
-    const result = await chrome.tabs.sendMessage(target.id, { type: "PRAXSIGHT_SCAN" });
+    const result = await sendMessageWithRecovery(target.id, { type: "PRAXSIGHT_SCAN" });
     return result && result.ok ? result : { ok: false, error: "active_page_scan_failed" };
   } catch (e) {
     return { ok: false, error: "content_script_missing_on_active_page" };
   }
 }
 
+async function executeActionOnActivePage(senderTabId, action) {
+  const tabs = await chrome.tabs.query({ currentWindow: true });
+  let target = tabs.find((tab) => tab.url && tab.url.startsWith(`${BACKEND_URL}/demo/`));
+  
+  if (!target) {
+    target = tabs.find((tab) => tab.id !== senderTabId && tab.url && tab.url.startsWith("http") && !tab.url.startsWith(`${BACKEND_URL}/dashboard`));
+  }
+  
+  if (!target || !target.id) return { ok: false, error: "open_the_demo_page_in_another_tab" };
+  try {
+    const result = await sendMessageWithRecovery(target.id, { type: "PRAXSIGHT_EXECUTE_ACTION", action });
+    return result && result.ok ? result : { ok: false, error: result?.error || "execution_failed" };
+  } catch (e) {
+    return { ok: false, error: "content_script_missing_on_active_page" };
+  }
+}
+
+let creatingOffscreen = false;
+async function setupOffscreenDocument(path) {
+  if (await chrome.offscreen.hasDocument()) return;
+  if (creatingOffscreen) {
+    await creatingOffscreen;
+  } else {
+    creatingOffscreen = chrome.offscreen.createDocument({
+      url: path,
+      reasons: [chrome.offscreen.Reason.WORKERS, chrome.offscreen.Reason.DOM_PARSER],
+      justification: 'Run Tesseract.js OCR'
+    });
+    await creatingOffscreen;
+    creatingOffscreen = false;
+  }
+}
+
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+  if (msg.type === "PRAXSIGHT_OCR_REQUEST") {
+    setupOffscreenDocument('ocr.html').then(() => {
+      chrome.runtime.sendMessage({ type: "PRAXSIGHT_RUN_OCR", imageData: msg.imageData }, sendResponse);
+    }).catch(e => sendResponse({ ok: false, error: e.message }));
+    return true;
+  }
   if (msg.type === "PRAXSIGHT_SEND_TO_SERVER") {
     sendSanitizedContext(msg.payload).then(sendResponse);
     return true;
@@ -155,6 +213,10 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   if (msg.type === "PRAXSIGHT_DASHBOARD_SCAN_ACTIVE") {
     scanActivePageForDashboard(_sender.tab && _sender.tab.id).then(sendResponse);
+    return true;
+  }
+  if (msg.type === "PRAXSIGHT_EXECUTE_ACTION_ACTIVE") {
+    executeActionOnActivePage(_sender.tab && _sender.tab.id, msg.action).then(sendResponse);
     return true;
   }
 });

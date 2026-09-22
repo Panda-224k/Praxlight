@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "PraxSight — Privacy-Preserving Browser Agent",
-  "short_name": "PraxSight",
+  "name": "PraxLight — Privacy-Preserving Browser Agent",
+  "short_name": "PraxLight",
   "version": "0.1.0",
   "description": "SIH26171: on-device DOM/text perception with a hard privacy gate — no raw PII leaves the browser before an AI agent reasons over the page.",
 
-  "permissions": ["activeTab", "scripting", "storage", "tabs"],
+  "permissions": ["activeTab", "scripting", "storage", "tabs", "offscreen"],
   "host_permissions": [
     "http://localhost:8000/*",
     "http://127.0.0.1:8000/*"
@@ -17,7 +17,7 @@
 
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "PraxSight — privacy firewall for browser agents"
+    "default_title": "PraxLight — privacy firewall for browser agents"
   },
 
   "content_scripts": [
@@ -29,6 +29,7 @@
         "content/privacy/detectors.js",
         "content/privacy/redaction.js",
         "content/privacy/policy-engine.js",
+        "content/ocr/ocr-engine.js",
         "content/content-script.js"
       ]
     }

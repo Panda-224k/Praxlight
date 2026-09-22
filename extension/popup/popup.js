@@ -2,6 +2,13 @@ const $ = (id) => document.getElementById(id);
 
 let activeTabId = null;
 let pendingAction = null;
+const handledApprovals = new Set();
+
+function approvalKey(action) {
+  if (!action) return 'none';
+  const target = action.target && action.target.id ? action.target.id : 'none';
+  return `${action.action || 'action'}::${target}::${action.reason || ''}`;
+}
 
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -45,25 +52,37 @@ function previewText(obj) {
   return lines.slice(0, 18).join("\n") || "(nothing visible captured)";
 }
 
-async function runScan() {
+async function runScan(includeImages = false) {
   const tab = await getActiveTab();
   activeTabId = tab.id;
-  $("scanBtn").disabled = true;
-  $("scanBtn").textContent = "Scanning…";
+  const btnId = includeImages ? "scanOcrBtn" : "scanBtn";
+  $(btnId).disabled = true;
+  $(btnId).textContent = "Scanning…";
 
   let resp;
   try {
-    resp = await sendToTab(tab.id, { type: "PRAXSIGHT_SCAN" });
+    resp = await sendToTab(tab.id, { type: includeImages ? "PRAXSIGHT_SCAN_IMAGES" : "PRAXSIGHT_SCAN" });
   } catch (e) {
     resp = null;
   }
 
-  $("scanBtn").disabled = false;
-  $("scanBtn").textContent = "Scan this page";
+  $(btnId).disabled = false;
+  $(btnId).textContent = includeImages ? "Scan images (OCR)" : "Scan page";
 
-  if (!resp || !resp.ok) {
+  if (!resp) {
+    $("btnScanImages").disabled = false;
+    $("btnScanImages").textContent = "Scan images (OCR)";
     $("gateBadge").textContent = "NO CONTENT SCRIPT";
     $("gateBadge").dataset.state = "blocked";
+    return null;
+  }
+  if (!resp.ok) {
+    $("btnScanImages").disabled = false;
+    $("btnScanImages").textContent = "Scan images (OCR)";
+    $("gateBadge").textContent = "ERROR";
+    $("gateBadge").dataset.state = "blocked";
+    console.error("Scan error:", resp.error);
+    alert("Scan error: " + resp.error);
     return null;
   }
 
@@ -74,6 +93,9 @@ async function runScan() {
   $("mDetected").textContent = resp.manifest.entities_detected;
   $("mRedacted").textContent = resp.manifest.entities_redacted;
   $("mRawSent").textContent = "0";
+  if (resp.ocrLatencyMs !== undefined) {
+    $("mOcrLatency").textContent = resp.ocrLatencyMs > 0 ? `${Math.round(resp.ocrLatencyMs)}ms` : '–';
+  }
 
   $("rawPreview").textContent = previewText(resp.raw);
   $("sanitizedPreview").textContent = previewText(resp.sanitized);
@@ -133,6 +155,10 @@ async function runAgent() {
   traceStep(action.validated ? "Action passed server-side validation" : "Action NOT validated", action.validated ? "done" : "blocked");
 
   if (action.requires_approval) {
+    if (handledApprovals.has(approvalKey(action))) {
+      traceStep("Approval already handled for this action", "done");
+      return;
+    }
     pendingAction = action;
     $("approvalReason").textContent = action.reason;
     $("approvalAction").textContent = `${action.action} → ${action.target ? action.target.id : "(none)"}`;
@@ -194,7 +220,8 @@ async function checkBackend() {
   }
 }
 
-$("scanBtn").addEventListener("click", runScan);
+$("scanBtn").addEventListener("click", () => runScan(false));
+$("scanOcrBtn").addEventListener("click", () => runScan(true));
 $("runAgentBtn").addEventListener("click", runAgent);
 $("clearLogBtn").addEventListener("click", async () => {
   await sendToBackground({ type: "PRAXSIGHT_CLEAR_LOG" });
@@ -202,11 +229,16 @@ $("clearLogBtn").addEventListener("click", async () => {
 });
 $("approveBtn").addEventListener("click", async () => {
   $("approvalBox").hidden = true;
-  if (pendingAction) await executeAndReport(pendingAction);
+  if (!pendingAction) return;
+  handledApprovals.add(approvalKey(pendingAction));
+  await executeAndReport(pendingAction);
   pendingAction = null;
 });
 $("rejectBtn").addEventListener("click", () => {
   $("approvalBox").hidden = true;
+  if (pendingAction) {
+    handledApprovals.add(approvalKey(pendingAction));
+  }
   traceStep("Human rejected the proposed action — nothing executed", "blocked");
   pendingAction = null;
 });

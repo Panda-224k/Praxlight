@@ -1,4 +1,4 @@
-# PraxSight — Demo Guide
+﻿# PraxLight â€” Demo Guide
 
 ## Setup (do this before judges arrive)
 
@@ -7,47 +7,47 @@ pip install -r server/requirements.txt
 python run.py
 ```
 
-Load the extension once via `chrome://extensions` → Developer mode → Load
-unpacked → `extension/`. Pin the PraxSight icon to the toolbar so it's one
+Load the extension once via `chrome://extensions` â†’ Developer mode â†’ Load
+unpacked â†’ `extension/`. Pin the PraxSight icon to the toolbar so it's one
 click away.
 
 Open `http://localhost:8000/demo/support-ticket/` and confirm the ticket
 page renders with the customer profile, the complaint text, and the three
 action buttons.
 
-## The flow (≈2 minutes)
+## The flow (â‰ˆ2 minutes)
 
 1. **Frame the problem in one sentence**: "This support console has a name,
    an email, a phone number, a card number and a government ID sitting in
    plain text and form fields. An AI agent that reads this page to help
    resolve the ticket should not need to see any of that to do its job."
 
-2. Click the PraxSight icon → **Scan this page**.
+2. Click the PraxSight icon â†’ **Scan this page**.
    - Point at the counts: inputs / controls / text nodes found.
    - Point at the **before / after split**: the left panel is literally
      what's on the page right now; the right panel is what would leave the
      browser. Entities detected vs. redacted should match exactly.
 
-3. Leave the task as *"Resolve this support ticket"* → **Send sanitized
-   context → run agent**.
-   - Narrate the trace as it fills in: perceive → detect → redact → gate
-     check → sent → agent proposed `click → btn_resolve` → validated.
+3. Leave the task as *"Resolve this support ticket"* â†’ **Send sanitized
+   context â†’ run agent**.
+   - Narrate the trace as it fills in: perceive â†’ detect â†’ redact â†’ gate
+     check â†’ sent â†’ agent proposed `click â†’ btn_resolve` â†’ validated.
    - Say explicitly: *"the server never received the customer's name,
-     email, card number, or PAN — only `[PERSON_1]`, `[EMAIL_1]`,
+     email, card number, or PAN â€” only `[PERSON_1]`, `[EMAIL_1]`,
      `[CARD_REDACTED]`, `[GOVID_REDACTED]` and the button labels."*
 
 4. The **approval card** appears because clicking "Resolve Ticket" is
-   treated as irreversible. Click **Approve & execute** — the actual button
+   treated as irreversible. Click **Approve & execute** â€” the actual button
    on the live page reacts (status line updates).
 
-5. Scroll to **Network Guard** — show the real logged request: entities
+5. Scroll to **Network Guard** â€” show the real logged request: entities
    redacted, payload size in bytes, latency in ms. This is not a mocked
    counter; it's the same log `background.js` writes on every gate decision.
 
 ## Fallback demo (if live conditions are difficult)
 
 Run the same flow once beforehand and screen-record it. Also keep this
-terminal snippet ready — it exercises the exact same backend logic without
+terminal snippet ready â€” it exercises the exact same backend logic without
 the extension, in case Chrome extension loading has any last-minute issue in
 the demo room:
 
@@ -70,21 +70,31 @@ curl -s -X POST http://localhost:8000/api/agent/act \
 
 ## Anticipated judge questions
 
-- **"Why not send a screenshot and use a vision model?"** — that's the
+- **"Why not send a screenshot and use a vision model?"** â€” that's the
   actual Phase-3+ plan (Gemini Nano is text-only; a real visual pass would
   need OCR or a VLM). We chose DOM+text first because it alone covers most
   real-world form PII with no model dependency at all, and it's easier to
   reason about correctness for a judged prototype than a vision pipeline we
   couldn't fully validate in the time available. See `CURRENT_IMPLEMENTATION.md`.
 - **"How do I know the redaction actually ran, and isn't just a UI claim?"**
-  — three independent checks block the request otherwise: the residual
+  â€” three independent checks block the request otherwise: the residual
   client scan, the background gate, and the server's own manifest check
-  (try sending `performed: false` — it's a hard 400, not a warning).
-- **"What stops the model from clicking 'Delete Account' on its own?"** —
+  (try sending `performed: false` â€” it's a hard 400, not a warning).
+- **"What stops the model from clicking 'Delete Account' on its own?"** â€”
   the validator forces `requires_approval=true` on high risk or any
   irreversible-sounding reason text, and the popup blocks execution until a
   human clicks Approve. `navigate` is disabled outright regardless of risk.
-- **"Could the extension itself lie about the manifest?"** — yes, in
+- **"Could the extension itself lie about the manifest?"** â€” yes, in
   principle, since it's checking its own homework; that's called out
   explicitly in `ARCHITECTURE.md`'s honest-limitation section, with the
   sibling project's independent network-monitor pattern named as the fix.
+
+## Recommended Demo Strategy: Popup + Passive Dashboard
+
+The dashboard's own 'Run local scan' and 'Run agent' buttons rely on a browser-to-extension communication bridge. While this works, it can sometimes be fragile (e.g. if the demo page wasn't refreshed after the extension loaded).
+
+**The most reliable way to demo PraxLight:**
+1. Open the Dashboard in a secondary screen or tab.
+2. Use the **Extension Popup** directly on the Demo Page (Support Ticket or Banking) to run scans and agent actions.
+3. Because the popup is the primary driver, it bypasses cross-tab bridge dependencies.
+4. The dashboard will automatically update via its background polling (/api/session/latest) regardless of the extension bridge's state. It functions perfectly as a "passive second screen" to visualize the privacy gate while you interact via the popup.

@@ -1,96 +1,149 @@
-# PraxLight — Architecture
+# PraxLight — Architecture (SIH 2026)
 
-## Component map
+## Overview
 
-| Component | File(s) | Responsibility |
-|---|---|---|
-| DOM perception | `extension/content/perception.js` | Extracts inputs, interactive controls, and visible text into plain-data objects. No PII judgment happens here. **Hardened in Phase 2**: disabled/required/checked state, ARIA metadata, nearest-form association, `inViewport` (distinct from CSS visibility), same-origin iframe perception one level deep, and open-shadow-root traversal. See `docs/PROJECT_STATE.md` for the full field list and what's still out of scope (closed shadow roots — architecturally invisible to any script, not a gap in this code). |
-| Detection engine | `extension/content/privacy/detectors.js` | Structural rules (field type/label/autocomplete) + regex/checksum text scanning. Pure functions — no DOM, no `window` — so it's directly unit-testable under Node. |
-| Model-backed detection (stub) | `extension/content/privacy/model-backends.js` | `DetectionBackend`-shaped adapters for Gemini Nano (Chrome Prompt API) and a Transformers.js NER fallback. Feature-detected, **not called by the live pipeline yet** — see `CURRENT_IMPLEMENTATION.md`. |
-| Policy engine | `extension/content/privacy/policy-engine.js` | Maps detection severity → action (`redact`/`allow`), builds the `privacy_manifest` attached to every request. Fail-closed: an unrecognized severity defaults to `redact`. |
-| Redaction | `extension/content/privacy/redaction.js` | Deterministic semantic tokens (`[EMAIL_1]`, `[PERSON_1]`) for identity fields; counterless `[X_REDACTED]` tokens for fields where even distinguishing "PASSWORD_1" from "PASSWORD_2" would leak structure. |
-| Orchestrator | `extension/content/content-script.js` | Wires the above into one scan, runs a residual-PII re-scan of its own output, executes agent actions on the live DOM. No network access. |
-| Hard privacy gate | `extension/background.js` | The **only** code path with `fetch()` capability toward the backend. Independently re-checks the manifest and residual-scan result before it will call out. |
-| Structured action API | `server/main.py`, `server/schemas.py` | Receives sanitized context only; rejects payloads without a completed privacy manifest (defense-in-depth pass #3). |
-| Model router | `server/agent.py` | Mirrors the sibling Prax AI project's provider-adapter pattern (`route_stream()` → per-provider streams). Ships with a deterministic offline reasoner so the demo needs zero API keys. |
-| Command validator | `server/validator.py` | Schema + target-existence + disabled-command checks; force-sets `requires_approval` on high-risk or irreversible-sounding actions. |
-| Popup UI | `extension/popup/*` | Privacy Firewall panel (live counts + before/after preview), agent trace, approval gate, Network Guard request log. |
+PraxLight is a privacy-preserving browser agent system. Its purpose is to let an agent reason over a web page while keeping raw personal data local to the browser and exposing only a sanitized, policy-checked view to the backend.
 
-## Perception schema (as of Phase 2)
+The architecture is intentionally built around a simple idea:
 
-`perception.capturePage()` returns (fields present since Phase 1 in **bold**,
-Phase 2 additions plain):
+- the page is observed locally
+- sensitive fields are detected and redacted locally
+- no raw PII is sent outside the browser unless the user approves a constrained action
+- the backend acts only on sanitized data and validated instructions
 
+## Security goal
+
+The system is designed around a fail-closed model:
+
+- if detection fails, the system stays conservative
+- if the manifest is suspicious, the request is blocked
+- if the target action is outside the known element set, it is rejected
+- if the action is irreversible or high-risk, it requires explicit approval
+
+## Main components
+
+| Component | Files | Role |
+| --- | --- | --- |
+| Perception layer | `extension/content/perception.js` | Builds a structured snapshot of page state: visible text, inputs, interactive elements, viewport info, and related metadata. |
+| Detection engine | `extension/content/privacy/detectors.js` | Scans the structured page snapshot for email, phone, PAN, card, name, and other sensitive patterns. |
+| Policy engine | `extension/content/privacy/policy-engine.js` | Maps detections to redaction decisions and builds a privacy manifest used by the gating layer. |
+| Redaction layer | `extension/content/privacy/redaction.js` | Replaces sensitive values with semantic tokens while preserving the structure needed for the agent to reason. |
+| Content script orchestrator | `extension/content/content-script.js` | Coordinates local scan, residual scan, and execution of approved actions on the live page. |
+| Background gate | `extension/background.js` | Owns the only outbound network path; re-checks manifests and ensures no raw content can be transmitted. |
+| Web API | `server/main.py` | Receives sanitized payloads, validates manifest requirements, and exposes the agent endpoint. |
+| Model router | `server/agent.py` | Chooses a model provider or falls back to deterministic local reasoning. |
+| Validator | `server/validator.py` | Enforces schema validity, target existence, action constraints, and approval conditions. |
+| Popup and dashboard UI | `extension/popup/*`, `dashboard/*` | Shows scan results, network guard logs, task context, and approval flow. |
+
+## Threat model
+
+The design assumes a malicious or unexpected page may contain sensitive customer information or attempt to mislead the agent.
+
+The architecture therefore checks for:
+
+- accidental leakage of PII from DOM inspection
+- hidden or residual sensitive values after redaction
+- unvalidated network requests from the browser extension
+- arbitrary action generation by the model
+- execution of high-risk actions without user approval
+
+The system is intentionally conservative: when uncertainty exists, the safe behavior is to stop or block rather than continue.
+
+## End-to-end flow
+
+```mermaid
+sequenceDiagram
+    participant Browser
+    participant Agent as Perception & Detection
+    participant Engine as Policy & Redaction
+    participant Gate as Extension Background
+    participant Backend as FastAPI Server
+    participant User
+    
+    Browser->>Agent: 1. Page Loads (DOM + Text)
+    Agent->>Agent: 2. Extract Structure
+    Agent->>Agent: 3. Detect Sensitive PII
+    Agent->>Engine: 4. Raw Detections
+    Engine->>Engine: 5. Apply Privacy Policy
+    Engine->>Engine: 6. Replace PII with Semantic Tokens
+    Engine->>Gate: 7. Trigger Sanitized Call
+    Gate->>Gate: 8. Verify Manifest & Residual Scan
+    Gate->>Backend: 9. Sanitized Payload (No Raw PII)
+    Backend->>Backend: 10. Validate Manifest & Policy
+    Backend->>Backend: 11. Model Router Proposes Action
+    Backend->>Backend: 12. Validate Action Constraints
+    Backend-->>Browser: 13. Proposed Action + Reason
+    Browser->>User: 14. Show Popup Approval UI
+    User-->>Browser: 15. Approve (or Reject)
+    Browser->>Browser: 16. Execute Action (if Approved)
 ```
-{
-  schemaVersion: "0.2.0",
-  url, title, capturedAt,
-  viewport: { width, height, scrollX, scrollY },
-  shadowHostCount,
-  inputs: [{ **psId, tag, type, name, autocomplete, label, value, bbox**,
-              disabled, required, checked, formId, aria, inViewport }],
-  interactive: [{ **psId, tag, role, text, bbox**,
-                   disabled, aria, inViewport }],
-  textNodes: [{ **psId, bbox, text** }],
-  iframes: [{ psId, src, bbox, visible, sameOrigin, perceived, note }]
-}
-```
 
-Every bolded field keeps its exact original name and meaning — `detectors.js`,
-`redaction.js`, and the pre-existing test suite all consume these fields and
-were re-run unchanged after the Phase 2 hardening to confirm nothing broke.
-The new fields are not yet threaded through `redaction.js`'s
-`sanitizePerception` into what the server sees (it still whitelists a fixed
-field set per element) — that's a natural follow-up (e.g. so an agent can
-avoid proposing a click on a `disabled` button) but wasn't required by Phase
-2's own scope, which was perception.js's output, not the full pipeline.
+## Security boundaries
 
-`iframes[].perceived` (when `sameOrigin` is true) has the same
-`{inputs, interactive, textNodes}` shape one level deep — nested iframes
-inside that iframe are not further recursed into, to bound cost.
+There are three major enforcement boundaries in the system:
 
-## Data flow
+### 1. Browser-local boundary
+The page content is never treated as safe by default. All interpretation and redaction happen inside the extension context before data leaves the page.
 
-```
-raw DOM/text
-  → perception.js            (plain-data snapshot)
-  → (optional) ocr-engine.js + Tesseract.js in offscreen document
-  → detectors.js              (Detection[] with type/severity/confidence)
-  → policy-engine.js          (Detection[] + action, privacy_manifest)
-  → redaction.js               (sanitized snapshot, same shape as perception)
-  → content-script.js residual scan   (fail-closed check #1)
-  → background.js gate               (fail-closed check #2, only fetch() in the extension)
-  → POST /api/agent/act
-      → server manifest check         (fail-closed check #3)
-      → agent.py reason()             (proposes ONE AgentAction)
-      → validator.py validate_action() (schema + target existence + approval flag)
-  → popup renders action + reason
-  → human Approves / Rejects
-  → content-script.js executeAction() (only on the exact validated target)
-```
+### 2. Extension boundary
+The browser extension owns the outbound network path. `background.js` is the only code path that may send data externally. This is the key design decision that prevents ad hoc fetch calls across content scripts.
 
-Three independent fail-closed checks sit between "page has PII" and "server
-sees anything": the client-side residual scan, the background gate, and the
-server's own manifest check. Any one of them tripping blocks the request —
-they don't share state, so a bug in one doesn't silently disable another.
+### 3. Backend boundary
+The server does not trust the browser blindly. It checks the manifest, confirms the payload is sanitized, and validates the proposed action before it can be accepted.
 
-## Why background.js, not content-script.js, owns the network call
+## Data contract
 
-`manifest.json`'s `host_permissions` only grants network access to the
-backend origin at the extension level; content scripts run inside the page's
-own security context and are not where the build wants that capability to
-live. Structuring it this way means: if someone reads this repo looking for
-"where could raw page data leak to the network", there is exactly one
-function (`sendSanitizedContext` in `background.js`) to audit, not N call
-sites scattered across content scripts that happen to run on every page.
+The current system sends a sanitized payload shaped around a privacy manifest and structured action request. In practical terms, the backend receives:
+
+- task description
+- sanitized page snapshot
+- detected entity counts and redactions
+- manifest metadata
+- only the sanitized interactive and input metadata needed for decision-making
+
+It does not receive raw text or raw user data from the live page.
+
+## Why the background worker owns the network call
+
+A browser extension has several execution contexts. The content script is intentionally not allowed to own the network boundary in this design.
+
+This matters because:
+
+- content scripts are tied to page execution
+- network access should be centralized and auditable
+- the same code path can enforce a single privacy gate instead of many scattered request sites
+- one review point is easier to reason about and harder to bypass accidentally
+
+The result is a single place to inspect for outbound data leakage: the extension background worker.
+
+## Current implementation reality
+
+This repo is a working prototype, not a full product deployment. The actual implemented flow is:
+
+- local page capture and redaction
+- local residual scan
+- backend request only after policy gate passes
+- deterministic or provider-backed routing to produce a structured action
+- server validation and approval gate
+
+Current limitations that are explicitly known include:
+
+- no production-grade OCR pipeline in the live workflow
+- model-backend adapters are present but not fully activated in the current main path
+- the demo is designed for local validation rather than production deployment
+- the approval UX is intentionally simple and explicit, not a full enterprise workflow
 
 ## Honest limitation
 
-`sendSanitizedContext`'s checks are still the extension checking its own
-homework — a maliciously modified build of this same extension could skip
-them. The sibling Prax AI project's standalone `network_monitor/` process
-(independent of the app being demoed) is the right pattern to apply here too:
-route demo traffic through a small external logging proxy so the payload
-judges see is what the browser's network stack actually sent, not what the
-extension claims it sent. Not implemented in this pass — see
-`CURRENT_IMPLEMENTATION.md`.
+The system’s protection is strong against accidental leakage, but it still depends on the extension code itself being trustworthy. A maliciously modified browser extension could evade the checks, which is why the project remains a serious prototype and not a full end-to-end native security boundary.
+
+For a production-grade version, the next step would be stronger independent logging, monitoring, and verification loops outside the extension itself.
+
+## Related documents
+
+- [`../README.md`](../README.md)
+- [`PRIVACY_MODEL.md`](PRIVACY_MODEL.md)
+- [`AGENT_PROTOCOL.md`](AGENT_PROTOCOL.md)
+- [`CURRENT_IMPLEMENTATION.md`](CURRENT_IMPLEMENTATION.md)
+- [`SIH_ALIGNMENT.md`](SIH_ALIGNMENT.md)
+

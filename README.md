@@ -1,150 +1,205 @@
-﻿# PraxLight
+# PraxLight - Smart India Hackathon (SIH) 2026
 
-**SIH26171 â€” On-device Visual Perception for Light-weight Browser Agents**
-Organization: ISRO Â· Category: Software Â· Theme: Miscellaneous
+PraxLight is a privacy-first browser agent framework for safely reasoning over live web pages without exposing raw personal data. The project combines a Chrome extension, a local perception layer, a deterministic policy engine, and a FastAPI backend that only sees sanitized context and validated actions.
 
 > See locally. Redact locally. Reason on sanitized context. Act only with a human's OK.
 
-PraxLight is a Manifest V3 browser extension plus a small FastAPI backend. The
-extension reads the current page's DOM and text locally, detects PII with
-regex + structural rules, replaces it with semantic tokens (`[EMAIL_1]`,
-`[PERSON_1]`, `[CARD_REDACTED]`), and only *then* is the sanitized page state
-allowed to reach the backend, which proposes one structured, schema-validated
-browser action for a human to approve.
+## What it does
 
-## Why this exists (and what it isn't)
+PraxLight runs in a browser extension and performs four core steps:
 
-This is **not** a PII redactor â€” Microsoft Presidio, [maskera](https://github.com)
-and OSSRedact already do that well for static text before a chat call. None of
-them protect a *browser agent mid-action* on a live page. PraxLight's actual
-contribution is the layer underneath an agent: DOM-anchored redaction tied to
-the actual clickable elements, a structured command protocol the model can't
-escape, a validator, and a human approval gate before anything executes. See
-[`docs/SIH_ALIGNMENT.md`](docs/SIH_ALIGNMENT.md) for the full prior-art comparison.
+1. Inspect the current page's DOM and visible text locally.
+2. Detect sensitive entities such as emails, phone numbers, PANs, names, account data, and card information.
+3. Replace them with semantic tokens such as `[EMAIL_1]`, `[PERSON_1]`, and `[CARD_REDACTED]` before any network transmission.
+4. Send only a sanitized payload and a privacy manifest to the backend, which proposes a single structured action for human review.
 
-## Architecture
+This is designed for a browser agent workflow where the agent may act on the page, but only after a privacy gate and approval step.
 
+## Why this project exists
+
+This is not a generic PII redaction library. It is a control plane for browser agents.
+
+Existing tools like Presidio or text sanitizers are usually designed for static documents or chat inputs. They do not protect agent actions in real time against a live page, DOM-linked elements, and irreversible UI actions.
+
+PraxLight focuses on:
+
+- DOM-anchored redaction tied to actual page elements
+- a fail-closed privacy manifest
+- a structured action format the agent cannot invent arbitrarily
+- a human approval gate before execution
+- server-side validation against known page elements only
+
+See [`docs/SIH_ALIGNMENT.md`](docs/SIH_ALIGNMENT.md) and [`docs/PRIVACY_MODEL.md`](docs/PRIVACY_MODEL.md) for the broader comparison and threat model.
+
+## Current implementation status
+
+This is a working prototype with the following real capabilities:
+
+- local page perception and extraction of visible text, inputs, and interactive elements
+- local PII detection and semantic redaction
+- residual PII re-scan before any outbound request
+- hard privacy gate in the extension background worker
+- FastAPI backend receiving only sanitized context
+- deterministic fallback model router and action validation
+- demo support-ticket flow with human approval before executing an action
+
+The project is intentionally honest about limits:
+
+- OCR is not fully wired for live production use in this repo
+- model-backed detection adapters exist as stubs/interfaces, not as a fully live inference stack
+- the UI is demo-oriented and designed for local validation rather than production deployment
+
+See [`docs/CURRENT_IMPLEMENTATION.md`](docs/CURRENT_IMPLEMENTATION.md) for a more explicit breakdown.
+
+## High-level architecture
+
+```mermaid
+flowchart TD
+    Start([Page DOM & Visible Text]) --> Perception[Local Perception<br/><code>extension/content/perception.js</code>]
+    Perception --> Detection[Rules-based PII Detection<br/><code>extension/content/privacy/detectors.js</code>]
+    Detection --> Policy[Policy Engine & Redaction<br/><code>policy-engine.js</code> & <code>redaction.js</code>]
+    Policy --> Rescan[Residual-PII Re-scan<br/><code>content-script.js</code><br/><i>Defense in Depth #1</i>]
+    Rescan --> Gate[Hard Privacy Gate<br/><code>extension/background.js</code><br/><i>Only outbound fetch() path</i>]
+    
+    Gate -- Sanitized Payload --> Backend[FastAPI Backend<br/><code>server/main.py</code><br/><i>Policy checks, Model router, Validation</i>]
+    
+    Backend -- Proposed Action --> Popup[Popup / Approval UI<br/><i>Shows action + reason</i>]
+    Popup --> Human{Human<br/>Approves?}
+    
+    Human -- Yes --> Execute([Execute Exact Validated DOM Action])
+    Human -- No --> Reject([Action Rejected])
 ```
-Page DOM/text
-     â”‚
-     â–¼
-Local perception (extension/content/perception.js)         â€” Phase 1
-     â”‚
-     â–¼
-Rules-based PII detection (extension/content/privacy/detectors.js)  â€” Phase 2
-     â”‚
-     â–¼
-Policy engine â†’ redaction / semantic tokens                â€” Phase 4
-     â”‚
-     â–¼
-Residual-PII re-scan (content-script.js)                   â€” defense in depth #1
-     â”‚
-     â–¼
-Hard privacy gate â€” the ONLY fetch() in the extension       â€” Phase 5
-(extension/background.js: re-checks the manifest + re-scans
- for residual PII before it will call the backend at all)
-     â”‚
-     â–¼
-POST /api/agent/act  (server/main.py)                       â€” Phase 7
-  â†’ server independently refuses payloads without a manifest â€” defense in depth #2
-  â†’ model router proposes ONE structured action              (server/agent.py)
-  â†’ validator rejects unknown selectors / disabled commands   (server/validator.py)
-     â”‚
-     â–¼
-Popup shows the action + reason, human Approves or Rejects   â€” Phase 8
-     â”‚
-     â–¼
-content-script.js executes ONLY that exact action on that exact element
-```
 
-Full detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md),
-[`docs/PRIVACY_MODEL.md`](docs/PRIVACY_MODEL.md),
-[`docs/AGENT_PROTOCOL.md`](docs/AGENT_PROTOCOL.md).
+## How the data flow works
 
-## Run it
+1. The extension inspects the page and creates a local structured snapshot.
+2. Detection rules scan the page text and metadata for sensitive patterns.
+3. The policy engine classifies each detection and decides whether it should be redacted or allowed.
+4. Redaction replaces sensitive values with semantic placeholders while preserving structure.
+5. The content script performs a second residual scan to ensure nothing obvious remains.
+6. Only then does the background service worker send data to the backend.
+7. The server validates that the request includes a privacy manifest and that the proposed action is within known elements.
+8. A deterministic model/router proposes one structured action, and the validator enforces action safety.
+9. A popup presents the action plus reason for human approval.
+10. The browser executes only the approved action, and only on the validated target.
 
-### 1. Backend (also serves the demo page)
+## Run locally
+
+### 1) Install Python dependencies
 
 ```bash
+cd praxsight
 pip install -r server/requirements.txt
+```
+
+### 2) Start the app
+
+```bash
 python run.py
 ```
 
-This starts the API at `http://localhost:8000` and opens the flagship demo
-page at `http://localhost:8000/demo/support-ticket/`.
+This starts the backend and serves:
 
-### 2. Load the extension
+- API: http://localhost:8000
+- API docs: http://localhost:8000/api/docs
+- Dashboard: http://localhost:8000/dashboard/
+- Demo: http://localhost:8000/demo/support-ticket/
+
+### 3) Load the extension
 
 1. Open `chrome://extensions`
-2. Enable **Developer mode** (top right)
-3. **Load unpacked** â†’ select the `extension/` folder
-4. Open the demo page from step 1, click the PraxLight icon in the toolbar
+2. Turn on Developer mode
+3. Click Load unpacked
+4. Select the `extension/` folder
+5. Open the demo page and click the PraxLight extension icon
 
-### 3. Try the flagship flow
+### 4) Run the demo
 
-1. Click **Scan this page** â†’ watch the Privacy Firewall panel show raw vs.
-   sanitized text side by side, with a live entity count.
-2. Leave the task as *"Resolve this support ticket"* â†’ click **Send sanitized
-   context â†’ run agent**.
-3. Watch the agent trace: perceive â†’ detect â†’ redact â†’ gate check â†’ send â†’
-   reason â†’ validate.
-4. An approval card appears (clicking "Resolve Ticket" is treated as an
-   irreversible action) â€” **Approve** to actually click the button on the
-   live page, or **Reject** to stop there.
-5. Check **Network guard** at the bottom of the popup â€” every request the
-   extension made to the backend is logged with its redaction counts,
-   payload size, and latency.
+1. Click Scan this page
+2. Use the task input or leave the default support-ticket task
+3. Click Send sanitized context → run agent
+4. Review the approval card
+5. Approve or reject the action
 
-## Tests
+## Project structure
+
+```text
+praxsight/
+  README.md
+  run.py
+  package.json
+  extension/
+    manifest.json
+    background.js
+    content/
+      perception.js
+      content-script.js
+      privacy/
+        detectors.js
+        model-backends.js
+        policy-engine.js
+        redaction.js
+      ocr/
+    popup/
+  server/
+    main.py
+    agent.py
+    agent_engine.py
+    schemas.py
+    validator.py
+    llm/
+    monitor/
+    ocr/
+    privacy/
+    rag/
+  dashboard/
+  demo/
+  docs/
+  tests/
+```
+
+## Tests and validation
 
 ```bash
-# One-time setup for the JS test suite (jsdom is dev-only â€” the extension
-# itself has no build step and no npm dependency at all)
+# JS tests
 npm install
-
-# Detection / redaction / policy engine â€” pure JS
 node --test tests/test_pii_lib.cjs
-
-# DOM perception (jsdom-backed â€” added in Phase 2)
 node --test tests/test_perception.cjs
 
-# Structured-action validator
+# Python tests
 pip install pytest
 python -m pytest tests/test_validator.py -v
 ```
 
-## Repository layout
+## Security model
 
-```
-extension/            Manifest V3 browser extension
-  background.js        the single fetch() chokepoint (hard privacy gate)
-  content/
-    perception.js       DOM extraction (Phase 1)
-    privacy/
-      detectors.js        rules-based PII detection (Phase 2) + DetectionBackend interface (Phase 3)
-      model-backends.js   Gemini Nano / Transformers.js adapter STUBS â€” not wired in yet
-      redaction.js         semantic token redaction (Phase 4)
-      policy-engine.js     severity â†’ action, builds the privacy manifest
-    content-script.js   orchestrates the scan + executes approved actions
-  popup/                Privacy Firewall / agent trace / approval / network guard UI
+The core rule is simple: raw page data stays in the browser unless a user explicitly approves a sanitized action.
 
-server/                FastAPI backend
-  main.py                /api/agent/act â€” never receives raw PII
-  schemas.py             sanitized-payload + structured-action Pydantic models
-  validator.py            rejects unknown selectors, disabled commands, unapproved risk
-  agent.py                deterministic offline model router (Phase 7)
+The implementation enforces this through multiple layers:
 
-demo/support-ticket/    the one flagship demo page (synthetic data only)
-docs/                   architecture, privacy model, agent protocol, SIH alignment, current-implementation honesty doc
-tests/                  Node + pytest unit tests
-```
+- local detection and redaction in the page context
+- a residual scan after sanitization
+- a background worker gate before any outbound network call
+- server-side validation for all action payloads
+- a human approval decision before execution
 
-## What's real vs. deferred
+This reduces the risk of the model seeing unredacted sensitive data and helps keep the browser action protocol scoped to exactly what the user approves.
 
-This build follows the *scoped* plan (nine phases, one flagship demo, done
-properly) rather than the full 56-phase vision in the original brief. See
-[`docs/CURRENT_IMPLEMENTATION.md`](docs/CURRENT_IMPLEMENTATION.md) for the
-honest breakdown â€” notably: **no vision/OCR model is wired up yet** (DOM +
-text only), and the Gemini Nano / Transformers.js model-backed detection
-layer is a real interface with no live model behind it yet.
+## Important limitations
+
+PraxLight is a focused prototype, not a fully production-hardened browser-agent platform. Current limits include:
+
+- no full production OCR pipeline
+- no production-grade model provider integration for every backend
+- evaluation is demo-focused rather than large-scale benchmarked
+- browser extension code is designed for local demos and controlled validation scenarios
+
+## Related docs
+
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- [`docs/PRIVACY_MODEL.md`](docs/PRIVACY_MODEL.md)
+- [`docs/AGENT_PROTOCOL.md`](docs/AGENT_PROTOCOL.md)
+- [`docs/CURRENT_IMPLEMENTATION.md`](docs/CURRENT_IMPLEMENTATION.md)
+- [`docs/SIH_ALIGNMENT.md`](docs/SIH_ALIGNMENT.md)
+
 
